@@ -1,4 +1,6 @@
 /node_modules
 /build
 /dist
-/sign
+/sign/**/*.pem
+/sign/**/*.p12
+/sign/**/*.jks
