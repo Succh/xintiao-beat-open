@@ -1,0 +1,294 @@
+<template>
+  <div class="page">
+    <div class="topline">
+      <div class="dot {{linked ? (server ? 'dot-on' : 'dot-warn') : 'dot-off'}}"></div>
+      <text class="topline-text">{{statusLine}}</text>
+    </div>
+
+    <!-- partner card -->
+    <div class="card" if="{{paired}}">
+      <div class="card-row">
+        <div class="avatar">
+          <image class="avatar-img" src="{{partnerIcon}}"></image>
+        </div>
+        <div class="card-info">
+          <div class="name-row">
+            <text class="name">{{partner.name}}</text>
+            <div class="dot {{partner.online ? 'dot-on' : 'dot-off'}} name-dot"></div>
+          </div>
+          <text class="sub">{{presence}}</text>
+        </div>
+      </div>
+      <div class="pill" if="{{moodText}}">
+        <image class="pill-img" src="{{partnerIcon}}"></image>
+        <text class="pill-text">{{moodText}}</text>
+      </div>
+      <text class="foot">{{updated}}</text>
+    </div>
+    <div class="card card-empty" else onclick="goPair">
+      <image class="empty-img" src="/common/emoji/hearts.png"></image>
+      <text class="empty-title">还没有配对</text>
+      <text class="sub">点这里获取配对码</text>
+    </div>
+
+    <!-- big miss button -->
+    <div class="big {{sending ? 'big-sending' : ''}}" onclick="sendShort" onlongpress="sendLong">
+      <div class="big-row">
+        <image class="big-img" src="/common/emoji/heart.png"></image>
+        <text class="big-text">{{bigLabel}}</text>
+      </div>
+      <text class="big-hint">点一下短振 · 长按长振</text>
+    </div>
+
+    <div class="row">
+      <div class="btn" onclick="goMood">
+        <image class="btn-img" src="/common/emoji/happy.png"></image>
+        <text class="btn-text">心情</text>
+      </div>
+      <div class="btn btn-mid {{poking ? 'btn-poke-on' : ''}}" onclick="sendPoke">
+        <image class="btn-img" src="/common/emoji/poke.png"></image>
+        <text class="btn-text">{{pokeLabel}}</text>
+      </div>
+      <div class="btn btn-right" onclick="goPhrases">
+        <image class="btn-img" src="/common/emoji/chat.png"></image>
+        <text class="btn-text">短语</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import vibrator from '@system.vibrator'
+import { moodLabel, emojiSrc, timeAgo, clock } from '../../common/logic.js'
+
+export default {
+  private: {
+    linked: false,
+    server: false,
+    paired: false,
+    partner: { name: 'TA', mood: '', text: '', online: false, wearing: false, updatedAt: 0 },
+    partnerIcon: '/common/emoji/miss.png',
+    presence: '',
+    moodText: '',
+    updated: '',
+    statusLine: '',
+    sending: false,
+    bigLabel: '想你了',
+    poking: false,
+    pokeLabel: '戳三下'
+  },
+
+  onInit() {
+    this.store = this.$app.$def.store
+    this.listener = (st, msg) => this.sync(st, msg)
+  },
+
+  onShow() {
+    this.store.on(this.listener)
+    this.sync(this.store.state)
+    this.timer = setInterval(() => this.sync(this.store.state), 30000)
+  },
+
+  onHide() {
+    this.store.off(this.listener)
+    if (this.timer) clearInterval(this.timer)
+  },
+
+  onDestroy() {
+    this.store.off(this.listener)
+    if (this.timer) clearInterval(this.timer)
+  },
+
+  sync(st, msg) {
+    const now = Date.now()
+    const p = st.partner || {}
+    this.linked = st.linked
+    this.server = st.server
+    this.paired = st.paired
+    this.partner = p
+    this.partnerIcon = emojiSrc(p.mood || 'miss')
+    this.presence = p.online ? (p.wearing ? '在线 · 戴着手表' : '在线') : '离线 · 上线后会收到'
+    const label = moodLabel(p.mood)
+    this.moodText = p.text ? p.text : label
+    this.updated = p.updatedAt ? timeAgo(p.updatedAt, now) + '更新' : ''
+    this.statusLine = (st.linked ? (st.server ? '已连接' : '手机离线') : '手机未连接') + ' · ' + clock(now)
+    if (msg && msg.t === 'sent' && this.sending) {
+      this.bigLabel = msg.ok ? '已送达' : '已存，稍后送'
+      this.done()
+    }
+    if (msg && msg.t === 'sent' && this.poking) {
+      this.pokeLabel = msg.ok ? '已戳' : '已存'
+      this.pokeDone()
+    }
+  },
+
+  send(level) {
+    if (this.sending) return
+    this.sending = true
+    this.bigLabel = '发送中…'
+    vibrator.vibrate({ mode: 'short' })
+    this.store.send({ t: 'miss', level: level }, ok => {
+      if (!ok) {
+        this.bigLabel = '手机没连上'
+        this.done()
+      }
+    })
+    // safety timeout in case the phone never confirms
+    this.sendTimer = setTimeout(() => {
+      if (this.sending) { this.bigLabel = '已发出'; this.done() }
+    }, 4000)
+  },
+
+  done() {
+    if (this.sendTimer) clearTimeout(this.sendTimer)
+    setTimeout(() => {
+      this.sending = false
+      this.bigLabel = '想你了'
+    }, 1500)
+  },
+
+  sendShort() { this.send('short') },
+  sendLong() { this.send('long') },
+
+  sendPoke() {
+    if (this.poking || this.sending) return
+    this.poking = true
+    this.pokeLabel = '戳…'
+    vibrator.vibrate({ mode: 'short' })
+    // PROTOCOL: miss + level poke3 (not undocumented t:poke)
+    this.store.send({ t: 'miss', level: 'poke3' }, ok => {
+      if (!ok) {
+        this.pokeLabel = '没连上'
+        this.pokeDone()
+      }
+    })
+    this.pokeTimer = setTimeout(() => {
+      if (this.poking) { this.pokeLabel = '已戳'; this.pokeDone() }
+    }, 4000)
+  },
+
+  pokeDone() {
+    if (this.pokeTimer) clearTimeout(this.pokeTimer)
+    setTimeout(() => {
+      this.poking = false
+      this.pokeLabel = '戳三下'
+    }, 1200)
+  },
+
+  goMood() { router.push({ uri: '/pages/mood' }) },
+  goPhrases() { router.push({ uri: '/pages/phrases' }) },
+  goPair() { router.push({ uri: '/pages/pair' }) }
+}
+</script>
+
+<style>
+@import '../../common/base.css';
+
+.topline {
+  height: 44px;
+  justify-content: center;
+  align-items: center;
+}
+.topline-text {
+  font-size: 17px;
+  color: #a99bb8;
+  margin-left: 8px;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border-width: 1px;
+}
+.dot-on { background-color: #7ee0b5; border-color: #7ee0b5; }
+.dot-warn { background-color: #ffc46b; border-color: #ffc46b; }
+.dot-off { background-color: #6b5d78; border-color: #6b5d78; }
+
+.card {
+  margin: 12px 16px 0 16px;
+  height: 190px;
+  padding: 14px;
+  flex-direction: column;
+  background-color: #1e1824;
+  border-radius: 28px;
+  border-width: 1px;
+  border-color: #1e1824;
+}
+.card-empty {
+  justify-content: center;
+  align-items: center;
+}
+.empty-img { width: 56px; height: 56px; }
+.empty-title { font-size: 24px; color: #ffffff; font-weight: bold; margin-top: 10px; }
+.card-row { flex-direction: row; align-items: center; }
+.avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 38px;
+  background-color: #2c2236;
+  border-width: 1px;
+  border-color: #2c2236;
+  justify-content: center;
+  align-items: center;
+}
+.avatar-img { width: 46px; height: 46px; }
+.card-info { flex-direction: column; margin-left: 14px; flex: 1; }
+.name-row { flex-direction: row; align-items: center; }
+.name { font-size: 24px; color: #ffffff; font-weight: bold; }
+.name-dot { margin-left: 8px; }
+.sub { font-size: 17px; color: #a99bb8; margin-top: 4px; }
+.pill {
+  margin-top: 14px;
+  height: 44px;
+  padding: 0 14px;
+  flex-direction: row;
+  align-items: center;
+  background-color: #2c2236;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: #2c2236;
+}
+.pill-img { width: 24px; height: 24px; }
+.pill-text { font-size: 18px; color: #ffffff; margin-left: 8px; lines: 1; text-overflow: ellipsis; }
+.foot { font-size: 15px; color: #a99bb8; margin-top: 10px; }
+
+.big {
+  margin: 12px 16px 0 16px;
+  height: 96px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #ff8fb8;
+  border-radius: 52px;
+  border-width: 1px;
+  border-color: #ff8fb8;
+}
+.big-sending { background-color: #f06a9f; border-color: #f06a9f; }
+.big-row { flex-direction: row; align-items: center; }
+.big-img { width: 32px; height: 32px; }
+.big-text { font-size: 30px; color: #2a0f1e; font-weight: bold; margin-left: 8px; }
+.big-hint { font-size: 14px; color: #2a0f1e; margin-top: 4px; }
+
+.row { flex-direction: row; margin: 12px 12px 0 12px; height: 64px; }
+.btn {
+  flex: 1;
+  height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #1e1824;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: #1e1824;
+}
+.btn-mid {
+  margin-left: 8px;
+  background-color: #2c2236;
+  border-color: #b79cff;
+}
+.btn-poke-on { background-color: #3a2a48; border-color: #ff8fb8; }
+.btn-right { margin-left: 8px; }
+.btn-img { width: 22px; height: 22px; }
+.btn-text { font-size: 16px; color: #ffffff; margin-top: 4px; }
+</style>

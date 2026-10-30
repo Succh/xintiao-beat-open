@@ -1,0 +1,34 @@
+/* 心跳 Beat（暂定名）— design tokens. Reusable for Vela .ux (band, solid colors only) and Android (phone). */
+:root{
+  /* brand */
+  --pink:#FF8FB8;        /* 蜜桃粉 primary  */
+  --pink-deep:#F06A9F;   /* pressed / emphasis */
+  --lav:#B79CFF;         /* 薰衣草紫 secondary */
+  --lav-deep:#8E6CF0;
+  --pink-tint:#FFE3EE;   /* light surfaces (phone) */
+  --lav-tint:#EEE6FF;
+  /* band (AMOLED dark) */
+  --b-bg:#000000;
+  --b-surface:#1E1824;   /* cards */
+  --b-surface2:#2C2236;  /* raised / selected */
+  --b-text:#FFFFFF;
+  --b-muted:#A99BB8;
+  /* phone (light) */
+  --p-bg:#FFF6FA;
+  --p-card:#FFFFFF;
+  --p-text:#3A2E45;
+  --p-muted:#8E7F9C;
+  --p-line:#F3E6EF;
+  /* status */
+  --online:#7EE0B5;
+  --away:#FFC27A;
+  --offline:#6B6275;
+  /* radii */
+  --r-band-screen:48px; --r-band-card:28px; --r-band-tile:22px;
+  --r-phone-card:24px; --r-phone-btn:999px; --r-chip:999px;
+  --font:"Noto Sans CJK SC","Noto Sans SC","PingFang SC","MiSans",sans-serif,"Noto Color Emoji";
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);-webkit-font-smoothing:antialiased}
+.emoji{font-family:"Noto Color Emoji";line-height:1}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--online)}

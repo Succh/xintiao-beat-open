@@ -1,0 +1,175 @@
+<script>
+/**
+ * 心跳 Beat – band app root.
+ * Owns the single interconnect connection to the phone companion app (same package + signature)
+ * and a tiny state store shared by all pages via this.$app.$def.
+ */
+import interconnect from '@system.interconnect'
+import storage from '@system.storage'
+import vibrator from '@system.vibrator'
+import router from '@system.router'
+import { DEFAULT_PHRASES } from './common/data.js'
+import { parseMessage, vibrationPlan } from './common/logic.js'
+
+const CACHE_KEY = 'beat_state_v1'
+
+const store = {
+  state: {
+    linked: false,        // band <-> phone link (interconnect) up
+    server: false,        // phone <-> relay server online
+    paired: false,
+    partner: { name: 'TA', mood: '', text: '', online: false, wearing: false, updatedAt: 0 },
+    me: { name: '我', mood: '' },
+    phrases: DEFAULT_PHRASES,
+    code: '', codeExpiresAt: 0,
+    lastIncoming: null,
+    lastSent: null
+  },
+  listeners: [],
+  conn: null,
+
+  init() {
+    const self = this
+    storage.get({
+      key: CACHE_KEY,
+      success(v) {
+        try {
+          if (v) {
+            const s = JSON.parse(v)
+            ;['paired', 'partner', 'me', 'phrases'].forEach(k => { if (s[k] !== undefined) self.state[k] = s[k] })
+            self.emit()
+          }
+        } catch (e) {}
+      }
+    })
+    this.connect()
+  },
+
+  connect() {
+    const self = this
+    try {
+      const conn = interconnect.instance()
+      self.conn = conn
+      conn.onopen = function () {
+        self.state.linked = true
+        self.emit()
+        self.send({ t: 'hello' })
+      }
+      conn.onclose = function () {
+        self.state.linked = false
+        self.emit()
+      }
+      conn.onerror = function () {
+        self.state.linked = false
+        self.emit()
+      }
+      conn.onmessage = function (raw) {
+        const msg = parseMessage(raw)
+        if (msg) self.handle(msg)
+      }
+      conn.getReadyState({
+        success(d) {
+          self.state.linked = d.status === 1
+          self.emit()
+          if (self.state.linked) self.send({ t: 'hello' })
+        }
+      })
+    } catch (e) {
+      console.log('interconnect unavailable: ' + e)
+    }
+  },
+
+  send(msg, cb) {
+    const self = this
+    if (!self.conn) {
+      if (cb) cb(false)
+      return
+    }
+    // Phone WearBridge expects a JSON string (same as messageApi bytes).
+    const data = typeof msg === 'string' ? msg : JSON.stringify(msg)
+    self.conn.send({
+      data: data,
+      success() { if (cb) cb(true) },
+      fail(data, code) {
+        console.log('send fail ' + code)
+        if (cb) cb(false)
+      }
+    })
+  },
+
+  handle(msg) {
+    const s = this.state
+    if (msg.t === 'state') {
+      s.server = !!msg.server
+      s.paired = !!msg.paired
+      if (msg.partner) s.partner = msg.partner
+      if (msg.me) s.me = msg.me
+      if (msg.phrases && msg.phrases.length) s.phrases = msg.phrases
+      this.save()
+    } else if (msg.t === 'code') {
+      s.code = msg.code || ''
+      s.codeExpiresAt = msg.expiresAt || 0
+    } else if (msg.t === 'incoming') {
+      s.lastIncoming = msg
+      if (msg.kind === 'mood') {
+        s.partner.mood = msg.mood
+        s.partner.text = msg.text || ''
+        s.partner.updatedAt = msg.ts || Date.now()
+      }
+      // silent:true (quiet hours / ack) → still show UI, skip vibration
+      if (!msg.silent) this.buzz(vibrationPlan(msg))
+      this.emit(msg)
+      this.showIncoming()
+      return
+    } else if (msg.t === 'sent') {
+      s.lastSent = msg
+    }
+    this.emit(msg)
+  },
+
+  showIncoming() {
+    // incoming page registers itself; otherwise open it
+    if (!this.incomingOpen) router.push({ uri: '/pages/incoming' })
+  },
+
+  buzz(plan) {
+    plan.forEach(function (p) {
+      setTimeout(function () { vibrator.vibrate({ mode: p[1] }) }, p[0])
+    })
+  },
+
+  save() {
+    const s = this.state
+    storage.set({
+      key: CACHE_KEY,
+      value: JSON.stringify({ paired: s.paired, partner: s.partner, me: s.me, phrases: s.phrases })
+    })
+  },
+
+  on(fn) {
+    this.listeners.push(fn)
+  },
+
+  off(fn) {
+    this.listeners = this.listeners.filter(f => f !== fn)
+  },
+
+  emit(msg) {
+    const st = this.state
+    this.listeners.slice().forEach(function (fn) {
+      try { fn(st, msg) } catch (e) { console.log('listener error ' + e) }
+    })
+  }
+}
+
+export default {
+  // pages use: const store = this.$app.$def.store
+  store: store,
+  onCreate() {
+    store.init()
+  },
+  onDestroy() {
+    store.listeners = []
+  }
+}
+</script>

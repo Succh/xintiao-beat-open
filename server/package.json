@@ -1,0 +1,15 @@
+{
+  "name": "xintiao-beat-relay",
+  "version": "0.1.0",
+  "description": "心跳 Beat WebSocket relay: pairing, events, partner status, offline queue",
+  "main": "src/server.js",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

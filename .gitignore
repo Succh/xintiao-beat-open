@@ -1,0 +1,29 @@
+# secrets / signing keys — never push
+keys/
+*.jks
+*.p12
+*.pem
+keystore.properties
+*.keystore
+.env
+.env.*
+
+# local build caches
+**/node_modules/
+**/.gradle/
+**/build/
+**/local.properties
+**/.idea/
+**/*.iml
+**/__pycache__/
+**/.DS_Store
+
+# local server state
+server/data/
+server/*.log
+*.log
+
+# prebuilt packages (may bake real server URLs) — build yourself
+out/
+phone/dist/
+.temp_band/

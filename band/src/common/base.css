@@ -1,0 +1,15 @@
+/* shared band styles – dark theme, 336x480 */
+.page {
+  width: 336px;
+  height: 480px;
+  flex-direction: column;
+  background-color: #000000;
+}
+.title {
+  height: 60px;
+  padding-top: 16px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffffff;
+}

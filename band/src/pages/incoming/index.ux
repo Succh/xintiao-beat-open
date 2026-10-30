@@ -1,0 +1,179 @@
+<template>
+  <div class="page">
+    <div class="stage">
+      <div class="ring1 {{pulse ? 'ring1-on' : ''}}">
+        <div class="ring2 {{pulse ? 'ring2-on' : ''}}">
+          <div class="core">
+            <image class="core-img" src="{{icon}}"></image>
+          </div>
+        </div>
+      </div>
+      <image class="heart h1" src="/common/emoji/heart.png"></image>
+      <image class="heart h2" src="/common/emoji/hearts.png"></image>
+      <image class="heart h3" src="/common/emoji/sparkle.png"></image>
+    </div>
+    <text class="headline">
+      <span class="who">{{from}} </span><span class="what">{{what}}</span>
+    </text>
+    <text class="meta">{{meta}}</text>
+    <div class="actions">
+      <div class="reply" onclick="reply">
+        <image class="reply-img" src="/common/emoji/heart.png"></image>
+        <text class="reply-text">{{replyLabel}}</text>
+      </div>
+      <div class="ok" onclick="gotIt">
+        <text class="ok-text">收到</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import vibrator from '@system.vibrator'
+import { describeIncoming, emojiSrc } from '../../common/logic.js'
+
+export default {
+  private: {
+    icon: '/common/emoji/miss.png',
+    from: 'TA',
+    what: '想你了',
+    meta: '刚刚',
+    pulse: false,
+    replyLabel: '回一个'
+  },
+
+  onInit() {
+    this.store = this.$app.$def.store
+    this.listener = (st, msg) => { if (msg && msg.t === 'incoming') this.show(msg) }
+  },
+
+  onShow() {
+    this.store.incomingOpen = true
+    this.store.on(this.listener)
+    this.show(this.store.state.lastIncoming)
+  },
+
+  onHide() { this.leave() },
+  onDestroy() { this.leave() },
+
+  leave() {
+    this.store.incomingOpen = false
+    this.store.off(this.listener)
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  },
+
+  show(ev) {
+    if (!ev) return
+    const d = describeIncoming(ev, Date.now())
+    const p = this.store.state.partner || {}
+    this.from = ev.from || p.name || 'TA'
+    this.what = d.title
+    this.meta = d.meta
+    this.icon = emojiSrc(d.icon)
+    // pulse rings for ~5s
+    if (this.timer) clearInterval(this.timer)
+    let n = 0
+    this.timer = setInterval(() => {
+      this.pulse = !this.pulse
+      if (++n >= 10) { clearInterval(this.timer); this.timer = null; this.pulse = false }
+    }, 500)
+  },
+
+  reply() {
+    vibrator.vibrate({ mode: 'short' })
+    this.replyLabel = '已回 💗'
+    this.store.send({ t: 'miss', level: 'short' }, () => {
+      setTimeout(() => router.back(), 600)
+    })
+  },
+
+  gotIt() {
+    this.store.send({ t: 'ack' })
+    router.back()
+  }
+}
+</script>
+
+<style>
+@import '../../common/base.css';
+
+.stage {
+  width: 336px;
+  height: 250px;
+  justify-content: center;
+  align-items: center;
+}
+.ring1 {
+  width: 212px;
+  height: 212px;
+  border-radius: 106px;
+  border-width: 2px;
+  border-color: #3a2a48;
+  justify-content: center;
+  align-items: center;
+}
+.ring1-on { border-color: #f06a9f; }
+.ring2 {
+  width: 168px;
+  height: 168px;
+  border-radius: 84px;
+  border-width: 3px;
+  border-color: #6a4a8e;
+  justify-content: center;
+  align-items: center;
+}
+.ring2-on { border-color: #ff8fb8; }
+.core {
+  width: 124px;
+  height: 124px;
+  border-radius: 62px;
+  border-width: 1px;
+  border-color: #b79cff;
+  background-color: #b79cff;
+  justify-content: center;
+  align-items: center;
+}
+.core-img { width: 72px; height: 72px; }
+.heart { position: absolute; width: 26px; height: 26px; }
+.h1 { left: 34px; top: 40px; }
+.h2 { left: 272px; top: 70px; width: 30px; height: 30px; }
+.h3 { left: 52px; top: 190px; width: 22px; height: 22px; }
+
+.headline { text-align: center; font-size: 30px; font-weight: bold; margin-top: 8px; lines: 1; text-overflow: ellipsis; padding: 0 12px; }
+.who { color: #ffffff; }
+.what { color: #ff8fb8; }
+.meta { text-align: center; font-size: 17px; color: #a99bb8; margin-top: 8px; lines: 1; padding: 0 12px; }
+
+.actions {
+  flex-direction: row;
+  margin: 24px 16px 0 16px;
+  height: 88px;
+}
+.reply {
+  flex: 1.35;
+  height: 88px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  background-color: #ff8fb8;
+  border-radius: 44px;
+  border-width: 1px;
+  border-color: #ff8fb8;
+}
+.reply-img { width: 28px; height: 28px; }
+.reply-text { font-size: 22px; color: #2a0f1e; font-weight: bold; margin-left: 6px; }
+.ok {
+  flex: 1;
+  height: 88px;
+  margin-left: 10px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1e1824;
+  border-radius: 44px;
+  border-width: 1px;
+  border-color: #1e1824;
+}
+.ok-text { font-size: 22px; color: #ffffff; }
+</style>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="BeatTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#FF8FB8</item>
+        <item name="android:colorPrimaryDark">#FFF6FA</item>
+        <item name="android:colorAccent">#F06A9F</item>
+        <item name="android:windowBackground">#FFF6FA</item>
+        <item name="android:statusBarColor">#FFF6FA</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

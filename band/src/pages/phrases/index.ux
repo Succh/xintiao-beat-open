@@ -1,0 +1,88 @@
+<template>
+  <div class="page">
+    <text class="title">{{title}}</text>
+    <list class="list">
+      <list-item type="phrase" class="item {{$idx === sentIdx ? 'item-on' : ''}}" for="p in phrases" onclick="sendPhrase($idx)">
+        <image class="item-img" src="{{icon(p.e)}}"></image>
+        <text class="item-text {{$idx === sentIdx ? 'item-text-on' : ''}}">{{p.text}}</text>
+        <div class="go {{$idx === sentIdx ? 'go-on' : ''}}">
+          <text class="go-text">{{$idx === sentIdx ? '✓' : '➜'}}</text>
+        </div>
+      </list-item>
+      <list-item type="pad" class="pad"><text class="pad-text">在手机 App 里可自定义短语</text></list-item>
+    </list>
+  </div>
+</template>
+
+<script>
+import vibrator from '@system.vibrator'
+import { emojiSrc } from '../../common/logic.js'
+
+export default {
+  private: {
+    phrases: [],
+    sentIdx: -1,
+    title: '快捷短语'
+  },
+
+  onInit() {
+    this.store = this.$app.$def.store
+    this.phrases = this.store.state.phrases
+    this.listener = st => { this.phrases = st.phrases }
+  },
+  onShow() { this.store.on(this.listener) },
+  onHide() { this.store.off(this.listener) },
+  onDestroy() { this.store.off(this.listener) },
+
+  icon(e) { return emojiSrc(e) },
+
+  sendPhrase(idx) {
+    const p = this.phrases[idx]
+    if (!p) return
+    this.sentIdx = idx
+    vibrator.vibrate({ mode: 'short' })
+    this.store.send({ t: 'phrase', e: p.e, text: p.text }, ok => {
+      this.title = ok ? '已发送 ✓' : '手机没连上'
+      setTimeout(() => {
+        this.title = '快捷短语'
+        this.sentIdx = -1
+      }, 1500)
+    })
+  }
+}
+</script>
+
+<style>
+@import '../../common/base.css';
+
+.list { flex: 1; padding: 0 16px; }
+.item {
+  height: 64px;
+  margin-bottom: 10px;
+  padding: 0 10px 0 16px;
+  flex-direction: row;
+  align-items: center;
+  background-color: #1e1824;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: #1e1824;
+}
+.item-on { background-color: #ff8fb8; border-color: #ff8fb8; }
+.item-img { width: 28px; height: 28px; }
+.item-text { flex: 1; font-size: 21px; color: #ffffff; margin-left: 10px; lines: 1; text-overflow: ellipsis; }
+.item-text-on { color: #2a0f1e; font-weight: bold; }
+.go {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: #2c2236;
+  background-color: #2c2236;
+  justify-content: center;
+  align-items: center;
+}
+.go-on { background-color: #2a0f1e; border-color: #2a0f1e; }
+.go-text { font-size: 20px; color: #ff8fb8; }
+.pad { height: 70px; justify-content: center; }
+.pad-text { font-size: 15px; color: #a99bb8; }
+</style>

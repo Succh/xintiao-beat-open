@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">心跳</string>
+    <!-- default relay address; build.sh replaces it from $BEAT_SERVER -->
+    <string name="default_server" translatable="false">@@BEAT_SERVER@@</string>
+</resources>

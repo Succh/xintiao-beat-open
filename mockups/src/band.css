@@ -1,0 +1,9 @@
+/* Band 9 Pro: 336x480, rounded 48. Solid colors only (Vela tip: avoid gradients), big targets >= 80px */
+html,body{width:336px;height:480px;background:#000;overflow:hidden}
+.screen{position:relative;width:336px;height:480px;background:var(--b-bg);color:var(--b-text);border-radius:var(--r-band-screen);overflow:hidden}
+.top{position:absolute;top:22px;left:0;right:0;text-align:center;font-size:18px;color:var(--b-muted);font-weight:500}
+.top b{color:var(--b-text);font-weight:700}
+.title{position:absolute;top:30px;left:0;right:0;text-align:center;font-size:24px;font-weight:700}
+.sub{font-size:16px;color:var(--b-muted)}
+.card{position:absolute;background:var(--b-surface);border-radius:var(--r-band-card)}
+.pill{display:flex;align-items:center;justify-content:center;border-radius:999px;font-weight:700}

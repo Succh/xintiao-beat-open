@@ -1,0 +1,130 @@
+<template>
+  <div class="page">
+    <div class="logo"><image class="logo-img" src="/common/emoji/heart.png"></image></div>
+    <text class="h">配对心跳</text>
+    <text class="s">{{hint}}</text>
+    <div class="code">
+      <div class="cell {{$idx === 3 ? 'gap' : ''}}" for="d in digits">
+        <text class="cell-text">{{d}}</text>
+      </div>
+    </div>
+    <text class="exp">{{expText}}</text>
+    <div class="wait" onclick="refresh">
+      <text class="wait-text">{{waitText}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import vibrator from '@system.vibrator'
+import { codeDigits, countdown } from '../../common/logic.js'
+
+export default {
+  private: {
+    digits: ['-', '-', '-', '-', '-', '-'],
+    hint: '让 TA 在手机 App 里输入下面的配对码',
+    expText: '正在获取…',
+    waitText: '等待对方…'
+  },
+
+  onInit() {
+    this.store = this.$app.$def.store
+    this.listener = (st, msg) => this.sync(st, msg)
+  },
+
+  onShow() {
+    this.store.on(this.listener)
+    this.refresh()
+    this.timer = setInterval(() => this.tick(), 1000)
+  },
+  onHide() { this.leave() },
+  onDestroy() { this.leave() },
+  leave() {
+    this.store.off(this.listener)
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  },
+
+  refresh() {
+    this.waitText = '等待对方…'
+    this.store.send({ t: 'pair_code' }, ok => {
+      if (!ok) { this.expText = '手机没连上'; this.waitText = '点我重试' }
+    })
+  },
+
+  tick() {
+    const st = this.store.state
+    if (!st.code) return
+    const left = st.codeExpiresAt - Date.now()
+    if (left <= 0) {
+      this.expText = '已过期'
+      this.waitText = '点我换一个'
+    } else {
+      this.expText = '有效期 ' + countdown(st.codeExpiresAt, Date.now())
+    }
+  },
+
+  sync(st, msg) {
+    if (msg && msg.t === 'code') {
+      this.digits = codeDigits(st.code)
+      this.tick()
+    }
+    if (st.paired && msg && msg.t === 'state') {
+      this.waitText = '配对成功 💗'
+      vibrator.vibrate({ mode: 'long' })
+      setTimeout(() => router.back(), 1200)
+    }
+    if (!st.server && msg && msg.t === 'state') {
+      this.expText = '手机还没连上服务器'
+    }
+  }
+}
+</script>
+
+<style>
+@import '../../common/base.css';
+
+.page { align-items: center; }
+.logo {
+  margin-top: 34px;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: #ff8fb8;
+  background-color: #ff8fb8;
+  justify-content: center;
+  align-items: center;
+}
+.logo-img { width: 42px; height: 42px; }
+.h { font-size: 26px; color: #ffffff; font-weight: bold; margin-top: 14px; }
+.s { font-size: 16px; color: #a99bb8; margin-top: 8px; text-align: center; width: 290px; }
+.code { flex-direction: row; margin-top: 24px; }
+.cell {
+  width: 44px;
+  height: 64px;
+  margin: 0 3px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: #2c2236;
+  background-color: #1e1824;
+  justify-content: center;
+  align-items: center;
+}
+.gap { margin-left: 15px; }
+.cell-text { font-size: 32px; color: #ff8fb8; font-weight: bold; }
+.exp { font-size: 16px; color: #a99bb8; margin-top: 18px; }
+.wait {
+  margin-top: 26px;
+  width: 200px;
+  height: 56px;
+  border-radius: 28px;
+  border-width: 1px;
+  border-color: #2c2236;
+  background-color: #2c2236;
+  justify-content: center;
+  align-items: center;
+}
+.wait-text { font-size: 19px; color: #ffffff; }
+</style>
