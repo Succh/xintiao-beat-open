@@ -27,12 +27,17 @@ test('parseMessage handles interconnect shapes', () => {
 test('incoming descriptions + vibration', () => {
   const now = Date.now()
   assert.equal(describeIncoming({ kind: 'miss', level: 'poke3', ts: now }, now).meta, '刚刚 · 戳了你 3 下')
-  assert.equal(describeIncoming({ kind: 'mood', mood: 'tired', ts: now }, now).title, '累了')
+  assert.equal(describeIncoming({ kind: 'mood', mood: 'tired', ts: now }, now).title, '困困')
   assert.equal(describeIncoming({ kind: 'phrase', e: 'eyes', text: '在干嘛？', ts: now }, now).icon, 'eyes')
   assert.equal(vibrationPlan({ kind: 'miss', level: 'poke3' }).length, 3)
   assert.deepEqual(vibrationPlan({ kind: 'miss', level: 'long' }), [[0, 'long']])
   assert.equal(emojiSrc('nope'), '/common/emoji/chat.png')
-  assert.equal(moodLabel('night'), '晚安')
+  assert.equal(moodLabel('night'), '困困')  // legacy night→sleepy
+  assert.equal(moodLabel('shy'), '害羞')
+  assert.equal(moodLabel('miss'), '想你')
+  assert.equal(moodLabel('miss_you'), '想你')
+  assert.equal(moodLabel('unknown_mood_x'), '心情')
+  assert.equal(describeIncoming({ kind: 'mood', mood: 'love', ts: now }, now).title, '喜欢')
 })
 
 test('silent skips vibration', () => {

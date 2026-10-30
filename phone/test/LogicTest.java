@@ -10,10 +10,19 @@ public class LogicTest {
 
     public static void main(String[] a) {
         // moods
-        eq(8, Logic.MOOD_IDS.length, "8 moods");
-        eq("累了", Logic.moodLabel("tired"), "label");
+        eq(14, Logic.MOOD_IDS.length, "14 moods");
+        eq("困困", Logic.moodLabel("tired"), "legacy tired→sleepy");
+        eq("想你", Logic.moodLabel("miss_you"), "miss_you");
+        eq("想你", Logic.moodLabel("miss"), "legacy miss");
+        eq("miss_you", Logic.canonicalizeMood("miss"), "canon miss");
         eq(false, Logic.isMood("nope"), "isMood");
+        eq(true, Logic.isMood("shy"), "isMood shy");
+        eq("害羞", Logic.moodLabel("shy"), "shy label");
+        eq("心情", Logic.moodLabel("nope"), "unknown mood degrade");
+        eq(true, Logic.hasMoodDisplay("nope"), "hasMoodDisplay unknown");
+        eq(false, Logic.hasMoodDisplay(""), "hasMoodDisplay empty");
         eq("💬", Logic.emoji("unknown"), "emoji fallback");
+        eq("😳", Logic.emoji("shy"), "shy emoji");
         // time
         long now = 1_800_000_000_000L;
         eq("刚刚", Logic.timeAgo(now - 30_000, now), "just now");
@@ -36,8 +45,8 @@ public class LogicTest {
         eq("想你了 🥰", Logic.eventText("miss", "short", null, null, null), "miss text");
         eq("戳了戳你 👉👉👉", Logic.eventText("miss", "poke3", null, null, null), "poke text");
         eq("💗 宝贝", Logic.notifyTitle("宝贝"), "notify title");
-        eq("想你了 🥰\n心情：😪 累了 · 手机上回复", Logic.notifyBody("miss", "short", null, null, null, "tired"), "notify body");
-        eq("宝贝 把心情改成了「想你」", Logic.timelineMain(false, "宝贝", "mood", null, "miss", ""), "tl mood");
+        eq("想你了 🥰\n心情：😴 困困 · 手机上回复", Logic.notifyBody("miss", "short", null, null, null, "tired"), "notify body");
+        eq("宝贝 把心情改成了「想你」", Logic.timelineMain(false, "宝贝", "mood", null, "miss_you", ""), "tl mood");
         eq("你 发送了「想你了」", Logic.timelineMain(true, "宝贝", "miss", "short", null, null), "tl miss");
         eq("宝贝 戳了你 3 下", Logic.timelineMain(false, "宝贝", "miss", "poke3", null, null), "tl poke");
         eq("附言：在上课", Logic.timelineSub(false, "mood", "在上课", "phone", false), "tl sub mood");

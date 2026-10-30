@@ -227,6 +227,7 @@ public final class Hub {
     public void sendAck(String via) { sendEvent(ev("ack", null, null), via); }
 
     public void sendMood(String mood, String text, String via) {
+        mood = Logic.canonicalizeMood(mood);
         JSONObject e = ev("mood", "mood", mood);
         put(e, "text", text == null ? "" : text);
         sp.edit().putString("my_mood", mood).putString("my_text", text == null ? "" : text)
@@ -354,7 +355,7 @@ public final class Hub {
                 addHistory(e);
                 if ("mood".equals(e.optString("kind"))) {
                     JSONObject p = partner();
-                    put(p, "mood", e.optString("mood"));
+                    put(p, "mood", Logic.canonicalizeMood(e.optString("mood")));
                     put(p, "text", e.optString("text"));
                     put(p, "updatedAt", e.optLong("ts"));
                     savePartner(p);
@@ -371,7 +372,7 @@ public final class Hub {
                 outboxRemoveByCid(e.optString("cid"));
                 if ("band".equals(e.optString("via"))) bandSent(m.optBoolean("delivered"));
                 if ("mood".equals(e.optString("kind"))) {
-                    sp.edit().putString("my_mood", e.optString("mood")).putString("my_text", e.optString("text"))
+                    sp.edit().putString("my_mood", Logic.canonicalizeMood(e.optString("mood"))).putString("my_text", e.optString("text"))
                         .putLong("my_mood_at", e.optLong("ts")).apply();
                     pushStateToBand();
                 }

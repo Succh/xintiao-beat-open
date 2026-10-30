@@ -1,14 +1,27 @@
-// Shared constants (keep in sync with phone/.../Moods.java and server/protocol.js)
+// Shared constants (keep in sync with phone/.../Logic.java and server/protocol.js)
 export const MOODS = [
+  { id: 'miss_you', label: '想你' },
+  { id: 'sweet', label: '甜甜' },
+  { id: 'love', label: '喜欢' },
+  { id: 'warm', label: '暖暖' },
   { id: 'happy', label: '开心' },
-  { id: 'miss', label: '想你' },
-  { id: 'tired', label: '累了' },
-  { id: 'angry', label: '生气' },
-  { id: 'aggrieved', label: '委屈' },
-  { id: 'busy', label: '忙碌' },
-  { id: 'hungry', label: '饿了' },
-  { id: 'night', label: '晚安' }
+  { id: 'soft', label: '软软' },
+  { id: 'shy', label: '害羞' },
+  { id: 'clingy', label: '黏你' },
+  { id: 'sleepy', label: '困困' },
+  { id: 'cozy', label: '窝着' },
+  { id: 'excited', label: '兴奋' },
+  { id: 'grateful', label: '感谢' },
+  { id: 'playful', label: '调皮' },
+  { id: 'calm', label: '平静' }
 ]
+
+/** Old ids → canonical (0.1.2 / early 0.1.3). */
+export const MOOD_ALIASES = {
+  miss: 'miss_you', tired: 'sleepy', angry: 'soft', aggrieved: 'soft',
+  busy: 'calm', hungry: 'cozy', night: 'sleepy', jealous: 'shy',
+  cheer: 'excited', melt: 'love'
+}
 
 export const DEFAULT_PHRASES = [
   { e: 'eyes', text: '在干嘛？' },
@@ -19,6 +32,9 @@ export const DEFAULT_PHRASES = [
 ]
 
 // emoji keys that have a PNG in /common/emoji
-export const EMOJI_KEYS = ['happy', 'miss', 'tired', 'angry', 'aggrieved', 'busy', 'hungry', 'night',
+export const EMOJI_KEYS = [
+  'miss_you', 'sweet', 'love', 'warm', 'happy', 'soft', 'shy', 'clingy',
+  'sleepy', 'cozy', 'excited', 'grateful', 'playful', 'calm',
+  'miss', 'tired', 'angry', 'aggrieved', 'busy', 'hungry', 'night', 'jealous', 'cheer', 'melt',
   'eyes', 'heart', 'rice', 'run', 'chat', 'hearts', 'poke', 'coffee', 'party', 'kiss', 'hug', 'wave',
   'home', 'phone', 'book', 'ok', 'sun', 'sparkle']

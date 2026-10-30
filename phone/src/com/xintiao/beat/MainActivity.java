@@ -47,6 +47,10 @@ public class MainActivity extends Activity implements Hub.Listener {
     private String typedCode = "";
     private TextView countdownView;
     private TextView codeView;
+    private String lastSeenPartnerMood = null;
+    private int guidePage = 0;
+    private String lastSeenMyMood = null;
+    private boolean moodFxReady = false;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (countdownView != null) updateCountdown();
@@ -88,7 +92,20 @@ public class MainActivity extends Activity implements Hub.Listener {
         hub.main.removeCallbacks(tick);
     }
 
-    @Override public void onChange() { render(); }
+    @Override public void onChange() {
+        String pm = hub.partner().optString("mood", "");
+        String mm = hub.myMood();
+        boolean fx = false;
+        if (moodFxReady && hub.paired()) {
+            if (!pm.isEmpty() && lastSeenPartnerMood != null && !pm.equals(lastSeenPartnerMood)) fx = true;
+            if (!mm.isEmpty() && lastSeenMyMood != null && !mm.equals(lastSeenMyMood)) fx = true;
+        }
+        lastSeenPartnerMood = pm;
+        lastSeenMyMood = mm;
+        moodFxReady = true;
+        render();
+        if (fx) playMoodFx();
+    }
 
     @Override public void onToast(String m) { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
 
@@ -138,9 +155,15 @@ public class MainActivity extends Activity implements Hub.Listener {
             it.setGravity(Gravity.CENTER_HORIZONTAL);
             TextView e = ui.text(items[i][0], 22, Ui.TEXT, false);
             e.setGravity(Gravity.CENTER);
-            if (tab != i) e.setAlpha(0.45f);
+            if (tab == i) {
+                e.setBackground(ui.roundCss(Ui.PINK_TINT, 14));
+                ui.pad(e, 10, 4, 10, 4);
+            } else {
+                e.setAlpha(0.42f);
+            }
             TextView l = ui.text(items[i][1], 12, tab == i ? Ui.PINK_DEEP : Ui.MUTED, tab == i);
             l.setGravity(Gravity.CENTER);
+            l.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 2, 0, 0));
             it.addView(e);
             it.addView(l);
             it.setOnClickListener(v -> { tab = t; render(); });
@@ -309,8 +332,8 @@ public class MainActivity extends Activity implements Hub.Listener {
         });
         c.addView(go);
 
-        TextView tips = ui.text("小提示　配对码只在 5 分钟内有效。手环上的「心跳」也会显示同一个配对码，两边任选其一输入即可。", 13, Ui.TIP, false);
-        tips.setLineSpacing(0, 1.4f);
+        TextView tips = ui.text("新手怎么走\n① 两人都装好手机「心跳」并填同一个服务器\n② 一人点「生成配对码」，另一人输入 6 位数\n③ 配对成功后，去「设置 → 安装手环 App」按引导装上手环端\n配对码 5 分钟内有效；手环上的「心跳」也会显示同一码。", 13, Ui.TIP, false);
+        tips.setLineSpacing(0, 1.45f);
         tips.setBackground(ui.roundCss(Ui.LAV_TINT, 20));
         ui.pad(tips, 20, 18, 20, 18);
         tips.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 24, 24, 0));
@@ -394,19 +417,44 @@ public class MainActivity extends Activity implements Hub.Listener {
         long now = System.currentTimeMillis();
 
         LinearLayout hd = ui.row();
-        hd.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 16, 24, 0));
-        hd.addView(ui.text("💗 心跳 Beat", 26, Ui.TEXT, true), ui.weight(1));
+        hd.setGravity(Gravity.CENTER_VERTICAL);
+        hd.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 18, 24, 0));
+        LinearLayout titleCol = ui.col();
+        TextView brand = ui.text("心跳 Beat", 26, Ui.TEXT, true);
+        TextView brandSub = ui.text("和 TA 的小世界", 12, Ui.MUTED, false);
+        brandSub.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 2, 0, 0));
+        titleCol.addView(brand);
+        titleCol.addView(brandSub);
+        hd.addView(titleCol, ui.weight(1));
         long days = Logic.daysTogether(hub.pairedAt(), now);
-        TextView d = ui.pill("在一起 " + days + " 天", 13, Ui.PINK_DEEP, Ui.PINK_TINT, 30);
+        TextView d = ui.pill("💗 在一起 " + days + " 天", 13, Ui.PINK_DEEP, Ui.PINK_TINT, 32);
         hd.addView(d);
         c.addView(hd);
 
         if (!hub.serverOnline) {
             TextView off = ui.text(hub.serverUrl().isEmpty() ? "还没设置服务器，去「设置」填写" : "正在连接服务器…（消息会先存着）", 13, Ui.TIP, false);
-            off.setBackground(ui.roundCss(Ui.LAV_TINT, 14));
-            ui.pad(off, 14, 8, 14, 8);
+            off.setBackground(ui.roundCss(Ui.LAV_TINT, 16));
+            ui.pad(off, 16, 10, 16, 10);
             off.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
             c.addView(off);
+        }
+
+        // 小白引导：手环未装「心跳」时给一键入口
+        if (needBandInstallGuide()) {
+            LinearLayout tip = ui.tipCard();
+            ui.pad(tip, 18, 14, 18, 14);
+            tip.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
+            tip.setOnClickListener(v -> showBandInstallGuide());
+            TextView tipTitle = ui.text("⌚ 还差一步：把手环 App 装上", 15, Ui.TEXT, true);
+            TextView tipBody = ui.text("点这里看完整中文步骤（AstroBox · 安装 · 切回小米运动健康）。装好后手环能弹心情和特效。", 13, Ui.TIP, false);
+            tipBody.setLineSpacing(0, 1.35f);
+            tipBody.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
+            TextView tipGo = ui.text("查看安装引导 ›", 13, Ui.PINK_DEEP, true);
+            tipGo.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 8, 0, 0));
+            tip.addView(tipTitle);
+            tip.addView(tipBody);
+            tip.addView(tipGo);
+            c.addView(tip);
         }
 
         LinearLayout duo = ui.row();
@@ -424,8 +472,12 @@ public class MainActivity extends Activity implements Hub.Listener {
         c.addView(duo);
 
         TextView miss = ui.pill("💗  想你了", 22, Color.WHITE, Ui.PINK, 72);
-        miss.setElevation(ui.px(8));
-        miss.setLayoutParams(ui.lp(Ui.MATCH, ui.px(72), 24, 16, 24, 0));
+        miss.setElevation(ui.px(10));
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            miss.setOutlineSpotShadowColor(0x88FF8FB8);
+            miss.setOutlineAmbientShadowColor(0x55B79CFF);
+        }
+        miss.setLayoutParams(ui.lp(Ui.MATCH, ui.px(72), 24, 18, 24, 0));
         miss.setOnClickListener(v -> { hub.sendMiss("short", "phone"); pulse(v); });
         miss.setOnLongClickListener(v -> { hub.sendMiss("long", "phone"); pulse(v); onToast("好想好想你 💞"); return true; });
         c.addView(miss);
@@ -484,7 +536,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         wp.leftMargin = ui.px(6);
         w.addView(wt, wp);
         c.addView(w);
-        boolean has = Logic.isMood(mood);
+        boolean has = Logic.hasMoodDisplay(mood);
         TextView em = ui.text(has ? Logic.emoji(mood) : "🫧", 48, Ui.TEXT, false);
         em.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 10, 0, 6));
         c.addView(em);
@@ -584,12 +636,16 @@ public class MainActivity extends Activity implements Hub.Listener {
         final String[] chosen = {Logic.isMood(hub.myMood()) ? hub.myMood() : ""};
         final TextView[] tiles = new TextView[Logic.MOOD_IDS.length];
         Runnable paint = () -> {
+            boolean any = chosen[0] != null && !chosen[0].isEmpty();
             for (int i = 0; i < tiles.length; i++) {
                 boolean on = Logic.MOOD_IDS[i].equals(chosen[0]);
-                tiles[i].setBackground(on ? ui.stroke(Color.WHITE, 18, 2.5f, Ui.LAV) : ui.roundCss(Color.WHITE, 18));
+                tiles[i].setBackground(on ? ui.stroke(0xFFFFF5FB, 18, 2.5f, Ui.LAV) : ui.roundCss(Color.WHITE, 18));
+                tiles[i].setAlpha(any && !on ? 0.55f : 1f);
+                tiles[i].setScaleX(on ? 1.06f : 1f);
+                tiles[i].setScaleY(on ? 1.06f : 1f);
             }
         };
-        int cell = (getResources().getDisplayMetrics().widthPixels - ui.px(230)) / 4;
+        int cell = (getResources().getDisplayMetrics().widthPixels - ui.px(200)) / 4;
         for (int i = 0; i < Logic.MOOD_IDS.length; i++) {
             final String id = Logic.MOOD_IDS[i];
             TextView t = ui.text(Logic.emoji(id) + "\n" + Logic.MOOD_LABELS[i], 14, Ui.TEXT, false);
@@ -616,7 +672,9 @@ public class MainActivity extends Activity implements Hub.Listener {
         ok.setOnClickListener(v -> {
             if (chosen[0].isEmpty()) { onToast("先选一个心情"); return; }
             hub.sendMood(chosen[0], note.getText().toString().trim(), "phone");
+            lastSeenMyMood = chosen[0];
             d.dismiss();
+            playMoodFx();
         });
     }
 
@@ -789,10 +847,14 @@ public class MainActivity extends Activity implements Hub.Listener {
             pDev.isEmpty() ? "TA 打开 App 后会自动识别" : pCan ? "已识别 · 可以装「心跳」手表 App" : "已识别 · 不支持第三方应用",
             null, null));
         String pMode = p.optString("mode", "notify");
+        boolean pFullOk = pDev.isEmpty() || pCan; // Watch 3 etc.: full disabled once device known
         w.addView(modeOption("notify", pMode, "适用 Redmi Watch 3 / 4。消息以手机通知的形式同步到手表，会振动、显示文字和表情；表上不能直接回复。",
-            m -> hub.setPartnerMode(m)));
-        w.addView(modeOption("full", pMode, "适用 Redmi Watch 5 / 6、小米手环 9 及以上。表上装「心跳」，实时收发心情、振动和短语。",
-            m -> hub.setPartnerMode(m)));
+            m -> hub.setPartnerMode(m), true));
+        w.addView(modeOption("full", pMode,
+            pFullOk
+                ? "适用 Redmi Watch 5 / 6、小米手环 9 及以上。表上装「心跳」，实时收发心情、振动和短语。"
+                : "TA 的设备不支持快应用（如 Watch 3），只能用通知模式。",
+            m -> hub.setPartnerMode(m), pFullOk));
 
         // ---- my device
         w.addView(spacer(14));
@@ -807,8 +869,39 @@ public class MainActivity extends Activity implements Hub.Listener {
             else { hub.redetect(); onToast("正在检测…"); }
         }));
         String myMode = hub.mode();
-        w.addView(modeOption("notify", myMode, "我手腕上用手机通知提醒（手表不能装 App 时用）。", m -> hub.setMode(m, true)));
-        w.addView(modeOption("full", myMode, "我的手环上装了「心跳」，直接在表上弹出、振动和回复。", m -> hub.setMode(m, true)));
+        boolean myFullOk = !hub.wear.hasNode() || Logic.canRunQuickApp(hub.wear.deviceName());
+        w.addView(modeOption("notify", myMode, "我手腕上用手机通知提醒（手表不能装 App 时用）。", m -> hub.setMode(m, true), true));
+        w.addView(modeOption("full", myMode,
+            myFullOk
+                ? "我的手环上装了「心跳」，直接在表上弹出、振动和回复。"
+                : "当前手表不支持快应用（如 Watch 3），已禁选完整手表 App。",
+            m -> hub.setMode(m, true), myFullOk));
+
+        // 安装手环 App 引导（一条龙基础：先讲清楚步骤 + 检测连接）
+        LinearLayout installGuide = ui.card();
+        installGuide.setOrientation(LinearLayout.HORIZONTAL);
+        installGuide.setGravity(Gravity.CENTER_VERTICAL);
+        ui.pad(installGuide, 18, 14, 18, 14);
+        installGuide.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 10, 0, 0));
+        TextView igIc = ui.text("📲", 22, Ui.TEXT, false);
+        igIc.setGravity(Gravity.CENTER);
+        igIc.setBackground(ui.roundCss(Ui.PINK_TINT, 14));
+        installGuide.addView(igIc, ui.lp(ui.px(44), ui.px(44)));
+        LinearLayout igBody = ui.col();
+        LinearLayout.LayoutParams igLp = ui.lp(0, Ui.WRAP, 12, 0, 0, 0);
+        igLp.weight = 1;
+        igBody.setLayoutParams(igLp);
+        igBody.addView(ui.text("安装手环 App", 15, Ui.TEXT, true));
+        String igSub = hub.wear.appInstalled()
+            ? "已检测到「心跳」已安装 · 点开可复习步骤"
+            : (hub.wear.hasNode() ? "手环已连接，按引导装上「心跳」" : "先连接手环，再按步骤用 AstroBox 安装");
+        TextView igSubTv = ui.text(igSub, 12, Ui.MUTED, false);
+        igSubTv.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 2, 0, 0));
+        igBody.addView(igSubTv);
+        installGuide.addView(igBody);
+        installGuide.addView(ui.text("引导 ›", 13, Ui.PINK_DEEP, true));
+        installGuide.setOnClickListener(v -> showBandInstallGuide());
+        w.addView(installGuide);
 
         // ---- phrases
         w.addView(spacer(14));
@@ -876,6 +969,136 @@ public class MainActivity extends Activity implements Hub.Listener {
         return c;
     }
 
+    /** 需要显示「安装手环」引导入口：支持快应用、且尚未装上心跳 App。Watch 3 等 notify-only 不打扰。 */
+    private boolean needBandInstallGuide() {
+        if (!hub.wear.hasNode()) return true;
+        String name = hub.wear.deviceName();
+        if (!name.isEmpty() && !Logic.canRunQuickApp(name)) return false;
+        return !hub.wear.appInstalled();
+    }
+
+    /** 小白分步引导：每页一个动作。实际装 .rpk 仍走 AstroBox → 切回小米运动健康 → 本 App 试发。 */
+    private void showBandInstallGuide() {
+        guidePage = 0;
+        hub.redetect();
+        renderGuidePage();
+    }
+
+    private void renderGuidePage() {
+        LinearLayout c = ui.col();
+        ui.pad(c, 22, 10, 22, 16);
+
+        TextView head = ui.text("安装手环 App", 20, Ui.TEXT, true);
+        c.addView(head);
+        TextView prog = ui.text("第 " + (guidePage + 1) + " / 7 步", 13, Ui.MUTED, false);
+        prog.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 4, 0, 0));
+        c.addView(prog);
+
+        // status chip
+        LinearLayout st = ui.tipCard();
+        ui.pad(st, 14, 10, 14, 10);
+        st.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 12, 0, 0));
+        String status;
+        if (!hub.wear.hasNode()) status = "检测：手环未连接";
+        else if (!Logic.canRunQuickApp(hub.wear.deviceName())) status = "检测：" + hub.wear.deviceName() + " · 用通知模式即可";
+        else if (hub.wear.appInstalled()) status = "检测：已装「心跳」✓";
+        else status = "检测：" + hub.wear.deviceName() + " · 已连接，待安装";
+        st.addView(ui.text(status, 13, Ui.TIP, false));
+        c.addView(st);
+
+        String title, body, primary;
+        Runnable action = null;
+        switch (guidePage) {
+            case 0:
+                title = "① 先给手环充电";
+                body = "把手环电量充到大约 20% 以上，装应用更稳。\n\n本页只做一件事：确认电量够了。";
+                primary = "电量够了，下一步";
+                break;
+            case 1:
+                title = "② 打开手机蓝牙";
+                body = "下拉状态栏，确认蓝牙已开启。\n手环要先能被手机找到，后面才能装 App。";
+                primary = "蓝牙已开，下一步";
+                break;
+            case 2:
+                title = "③ 说明：用 AstroBox 安装";
+                body = "目前「心跳」手环包是 .rpk 文件，需要用第三方工具 AstroBox 推到手环。\n\n本 App 还不能一键推送安装（后续会做）。下面两步会带你：AstroBox 安装 → 切回小米运动健康。";
+                primary = "明白了，下一步";
+                break;
+            case 3:
+                title = "④ 用 AstroBox 装「心跳」";
+                body = "请按顺序做完再点下一步：\n1. 浏览器打开 https://abox.run 下载安装 AstroBox V2\n2. 手机设置里结束「小米运动健康」\n3. 手环：设置 → 系统操作 → 连接新手机 → 点蓝勾\n4. AstroBox 连上手环后：队列 → ＋ → 快应用 → 选下载里的\n   com.xintiao.beat.debug.0.1.3.rpk\n5. 等到 100%，手环应用列表出现粉色「心跳」";
+                primary = "我装好了，下一步";
+                break;
+            case 4:
+                title = "⑤ 切回小米运动健康";
+                body = "装完一定要切回去，否则步数/心率不同步：\n1. AstroBox 断开连接并结束运行\n2. 手环再点「连接新手机」→ 蓝勾\n3. 打开「小米运动健康」自动重连\n\n装好的「心跳」会保留。";
+                primary = "已切回，下一步";
+                break;
+            case 5:
+                title = "⑥ 权限清单（装表后）";
+                body = "为了 TA 的心跳能及时到：\n· 通知权限：允许「心跳」通知\n· 后台：关闭电池优化 / 允许自启动\n· 手环授权：设置 → 我的设备 → 去授权（如需要）\n\n可先点「去检查保活」，或稍后在设置里做。";
+                primary = "去检查保活";
+                action = () -> keepAlive();
+                break;
+            default:
+                title = "⑦ 试发一条";
+                body = "回到首页，点「想你了」。\n· 若手环已装「心跳」：手腕应短振并弹出\n· 若是 Watch 3：走通知，表上显示文字即可\n\n也可点下面按钮立刻试发。";
+                primary = "试发「想你了」";
+                action = () -> hub.sendMiss("short", "phone");
+                break;
+        }
+
+        TextView t = ui.text(title, 18, Ui.TEXT, true);
+        t.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 16, 0, 0));
+        c.addView(t);
+        TextView b = ui.text(body, 14, Ui.TIP, false);
+        b.setLineSpacing(0, 1.4f);
+        b.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 10, 0, 0));
+        c.addView(b);
+
+        TextView go = ui.pill(primary, 17, Color.WHITE, Ui.PINK, 52);
+        go.setLayoutParams(ui.lp(Ui.MATCH, ui.px(52), 0, 20, 0, 0));
+        c.addView(go);
+
+        LinearLayout nav = ui.row();
+        nav.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 12, 0, 0));
+        TextView back = ui.pill(guidePage == 0 ? "关闭" : "上一步", 15, Ui.PINK_DEEP, Ui.PINK_TINT, 44);
+        TextView skip = ui.pill(guidePage >= 6 ? "完成" : "跳过这步", 15, Ui.MUTED, Ui.LAV_TINT, 44);
+        nav.addView(back, new LinearLayout.LayoutParams(0, ui.px(44), 1));
+        LinearLayout.LayoutParams sk = new LinearLayout.LayoutParams(0, ui.px(44), 1);
+        sk.leftMargin = ui.px(10);
+        nav.addView(skip, sk);
+        c.addView(nav);
+
+        ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
+        sc.addView(c);
+        int maxH = (int) (getResources().getDisplayMetrics().heightPixels * 0.82f);
+        sc.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxH));
+
+        AlertDialog d = sheet(sc);
+        final Runnable act = action;
+        go.setOnClickListener(v -> {
+            if (act != null) act.run();
+            if (guidePage >= 6) { d.dismiss(); onToast("可以去首页再试试啦"); return; }
+            d.dismiss();
+            guidePage++;
+            root.postDelayed(this::renderGuidePage, 120);
+        });
+        back.setOnClickListener(v -> {
+            d.dismiss();
+            if (guidePage == 0) return;
+            guidePage--;
+            root.postDelayed(this::renderGuidePage, 120);
+        });
+        skip.setOnClickListener(v -> {
+            d.dismiss();
+            if (guidePage >= 6) return;
+            guidePage++;
+            root.postDelayed(this::renderGuidePage, 120);
+        });
+    }
+
     private String versionName() {
         try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return ""; }
     }
@@ -907,12 +1130,13 @@ public class MainActivity extends Activity implements Hub.Listener {
 
     interface ModePick { void pick(String m); }
 
-    private View modeOption(String mode, String current, String desc, ModePick pick) {
+    private View modeOption(String mode, String current, String desc, ModePick pick, boolean enabled) {
         boolean on = mode.equals(current);
         LinearLayout o = ui.card();
         o.setOrientation(LinearLayout.HORIZONTAL);
         o.setBackground(on ? ui.stroke(0xFFFFF9FB, 24, 2, Ui.PINK) : ui.roundCss(Color.WHITE, 24));
         ui.pad(o, 18, 16, 18, 16);
+        if (!enabled) o.setAlpha(0.55f);
         View radio = new View(this);
         android.graphics.drawable.GradientDrawable rd = ui.oval(Color.WHITE);
         rd.setStroke(ui.px(on ? 7 : 2), on ? Ui.PINK : 0xFFD9CCE2);
@@ -924,8 +1148,11 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout h = ui.row();
         h.addView(ui.text(Logic.modeLabel(mode), 16, Ui.TEXT, true));
         boolean full = "full".equals(mode);
-        TextView chip = ui.text(on ? "当前" : full ? "实时" : "省心", 11, full && !on ? Ui.LAV_DEEP : Ui.PINK_DEEP, false);
-        chip.setBackground(ui.roundCss(full && !on ? Ui.LAV_TINT : Ui.PINK_TINT, 999));
+        String chipTxt = !enabled ? "不可用" : (on ? "当前" : full ? "实时" : "省心");
+        int chipFg = !enabled ? Ui.MUTED : (full && !on ? Ui.LAV_DEEP : Ui.PINK_DEEP);
+        int chipBg = !enabled ? Ui.LINE : (full && !on ? Ui.LAV_TINT : Ui.PINK_TINT);
+        TextView chip = ui.text(chipTxt, 11, chipFg, false);
+        chip.setBackground(ui.roundCss(chipBg, 999));
         ui.pad(chip, 8, 2, 8, 2);
         LinearLayout.LayoutParams cp = ui.lp(Ui.WRAP, Ui.WRAP);
         cp.leftMargin = ui.px(6);
@@ -938,7 +1165,10 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout.LayoutParams bp = ui.weight(1);
         bp.leftMargin = ui.px(12);
         o.addView(b, bp);
-        o.setOnClickListener(v -> { if (!on) pick.pick(mode); });
+        o.setOnClickListener(v -> {
+            if (!enabled) { onToast("这台手表不支持完整手表 App"); return; }
+            if (!on) pick.pick(mode);
+        });
         o.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 0, 0, 10));
         return o;
     }
@@ -985,4 +1215,87 @@ public class MainActivity extends Activity implements Hub.Listener {
         onToast("在「自启动」打开开关，「省电策略」选「无限制」");
         startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
     }
+    /** Pink–purple couple FX ~480–600ms: glow, scale pulse, 6–8 hearts; haptic once; no sound. */
+    private void playMoodFx() {
+        if (root == null) return;
+        View old = root.findViewWithTag("moodFx");
+        if (old != null) root.removeView(old);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                android.os.Vibrator vb = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (vb != null && vb.hasVibrator())
+                    vb.vibrate(android.os.VibrationEffect.createOneShot(28, 48));
+            } else {
+                android.os.Vibrator vb = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (vb != null) vb.vibrate(28);
+            }
+        } catch (Exception ignored) { }
+
+        FrameLayout layer = new FrameLayout(this);
+        layer.setTag("moodFx");
+        layer.setClickable(false);
+        layer.setFocusable(false);
+        root.addView(layer, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        int W = root.getWidth() > 0 ? root.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        int H = root.getHeight() > 0 ? root.getHeight() : getResources().getDisplayMetrics().heightPixels;
+        int cx = W / 2, cy = (int) (H * 0.36f);
+
+        View glow = new View(this);
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            new int[]{0xE8E8B4D4, 0xCCC9A0DC, 0x00FFF5FB});
+        gd.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        glow.setBackground(gd);
+        int g = ui.px(200);
+        FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(g, g);
+        glp.leftMargin = cx - g / 2;
+        glp.topMargin = cy - g / 2;
+        glow.setAlpha(0f);
+        glow.setScaleX(0.85f);
+        glow.setScaleY(0.85f);
+        layer.addView(glow, glp);
+
+        TextView heart = ui.text("💗", 48, Ui.TEXT, false);
+        heart.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams hlp = new FrameLayout.LayoutParams(ui.px(80), ui.px(80));
+        hlp.leftMargin = cx - ui.px(40);
+        hlp.topMargin = cy - ui.px(40);
+        heart.setAlpha(0f);
+        heart.setScaleX(1f);
+        heart.setScaleY(1f);
+        layer.addView(heart, hlp);
+
+        String[] bits = {"💕", "💗", "✨", "💖", "💕", "💗", "✨", "💖"};
+        int[][] offs = {{-90, -36}, {88, -48}, {-70, 62}, {78, 55}, {12, -88}, {-100, 20}, {105, 12}, {0, 78}};
+        TextView[] sparks = new TextView[8];
+        for (int i = 0; i < 8; i++) {
+            TextView s = ui.text(bits[i], 14 + (i % 3), Ui.TEXT, false);
+            FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(ui.px(32), ui.px(32));
+            sp.leftMargin = cx + ui.px(offs[i][0]);
+            sp.topMargin = cy + ui.px(offs[i][1]);
+            s.setAlpha(0f);
+            s.setScaleX(0.4f);
+            s.setScaleY(0.4f);
+            layer.addView(s, sp);
+            sparks[i] = s;
+        }
+
+        final int total = 560;
+        glow.animate().alpha(1f).scaleX(1.08f).scaleY(1.08f).setDuration(220).start();
+        heart.animate().alpha(1f).scaleX(1.06f).scaleY(1.06f).setDuration(200)
+            .withEndAction(() -> heart.animate().scaleX(1f).scaleY(1f).setDuration(180).start()).start();
+        for (int i = 0; i < sparks.length; i++) {
+            final TextView s = sparks[i];
+            s.postDelayed(() -> s.animate().alpha(0.95f).scaleX(1f).scaleY(1f).setDuration(160).start(), 40 + i * 35);
+        }
+        layer.postDelayed(() -> {
+            glow.animate().alpha(0f).setDuration(200).start();
+            heart.animate().alpha(0f).setDuration(200).start();
+            for (TextView s : sparks) s.animate().alpha(0f).setDuration(180).start();
+        }, total - 200);
+        layer.postDelayed(() -> { if (root != null) root.removeView(layer); }, total + 40);
+    }
+
 }

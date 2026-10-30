@@ -1,9 +1,16 @@
 // Pure helpers (no Vela APIs) so they can be unit-tested with Node.
-import { MOODS, EMOJI_KEYS } from './data.js'
+import { MOODS, MOOD_ALIASES, EMOJI_KEYS } from './data.js'
+
+export function canonicalizeMood(id) {
+  if (!id) return id || ''
+  return MOOD_ALIASES[id] || id
+}
 
 export function moodLabel(id) {
-  for (let i = 0; i < MOODS.length; i++) if (MOODS[i].id === id) return MOODS[i].label
-  return ''
+  if (!id) return ''
+  const c = canonicalizeMood(id)
+  for (let i = 0; i < MOODS.length; i++) if (MOODS[i].id === c) return MOODS[i].label
+  return '心情' // unknown id: degrade, do not crash
 }
 
 export function emojiSrc(key) {
@@ -59,7 +66,8 @@ export function describeIncoming(ev, now) {
     return { title: '想你了', meta: ago + (ev.level === 'long' ? ' · 好想好想你' : ' · 想你了'), icon: 'miss' }
   }
   if (ev.kind === 'mood') {
-    return { title: moodLabel(ev.mood) || '换了心情', meta: ago + ' · 心情' + (ev.text ? '：' + ev.text : ''), icon: ev.mood }
+    const mid = canonicalizeMood(ev.mood)
+    return { title: moodLabel(mid) || '换了心情', meta: ago + ' · 心情' + (ev.text ? '：' + ev.text : ''), icon: mid }
   }
   if (ev.kind === 'phrase') {
     return { title: ev.text || '', meta: ago + ' · 发来短语', icon: ev.e || 'chat' }

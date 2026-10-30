@@ -2,7 +2,7 @@
   <div class="page">
     <text class="title">{{title}}</text>
     <div class="grid">
-      <div class="tile {{m.id === selected ? 'tile-on' : ''}}" for="m in moods" onclick="pick(m.id)">
+      <div class="tile {{m.id === selected ? 'tile-on' : ''}} {{fxId === m.id ? 'tile-fx' : ''}}" for="m in moods" onclick="pick(m.id)">
         <image class="tile-img" src="/common/emoji/{{m.id}}.png"></image>
         <text class="tile-text">{{m.label}}</text>
       </div>
@@ -19,7 +19,8 @@ export default {
   private: {
     moods: MOODS,
     selected: '',
-    title: '我现在…'
+    title: '我现在…',
+    fxId: ''
   },
 
   onInit() {
@@ -29,10 +30,12 @@ export default {
 
   pick(id) {
     this.selected = id
+    this.fxId = id
     vibrator.vibrate({ mode: 'short' })
     this.store.state.me.mood = id
     this.store.send({ t: 'mood', mood: id }, ok => {
       this.title = ok ? '已告诉 TA ✓' : '手机没连上'
+      setTimeout(() => { this.fxId = '' }, 500)
       setTimeout(() => router.back(), ok ? 700 : 1500)
     })
   }
@@ -42,29 +45,33 @@ export default {
 <style>
 @import '../../common/base.css';
 
-.title { height: 76px; padding-top: 26px; }
+.title { height: 56px; padding-top: 18px; font-size: 22px; }
 .grid {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 .tile {
-  width: 147px;
-  height: 84px;
-  margin-bottom: 10px;
-  flex-direction: row;
+  width: 100px;
+  height: 70px;
+  margin-bottom: 8px;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background-color: #1e1824;
-  border-radius: 22px;
-  border-width: 3px;
+  border-radius: 18px;
+  border-width: 2px;
   border-color: #1e1824;
 }
 .tile-on {
   background-color: #2c2236;
   border-color: #b79cff;
 }
-.tile-img { width: 34px; height: 34px; }
-.tile-text { font-size: 20px; color: #ffffff; margin-left: 8px; }
+.tile-fx {
+  background-color: #3a2a48;
+  border-color: #ff8fb8;
+}
+.tile-img { width: 28px; height: 28px; }
+.tile-text { font-size: 16px; color: #ffffff; margin-top: 2px; }
 </style>

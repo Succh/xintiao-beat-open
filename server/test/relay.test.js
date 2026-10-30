@@ -32,6 +32,8 @@ test('cleanEvent validation', () => {
   assert.equal(cleanEvent({ kind: 'mood', mood: 'xx' }), null)
   assert.equal(cleanEvent({ kind: 'phrase', text: '   ' }), null)
   assert.deepEqual(cleanEvent({ kind: 'poke' }), { kind: 'miss', level: 'poke3', via: 'phone' })
+  assert.equal(cleanEvent({ kind: 'mood', mood: 'miss' }).mood, 'miss_you')
+  assert.equal(cleanEvent({ kind: 'mood', mood: 'miss_you' }).mood, 'miss_you')
   assert.equal(cleanEvent({ kind: 'phrase', text: 'x'.repeat(100) }).text.length, 40)
   assert.equal(cleanEvent({ kind: 'miss', level: 'weird', via: 'band' }).level, 'short')
 })
@@ -50,8 +52,8 @@ test('pair, send miss/mood/phrase, history, status, unpair', async () => {
   // mood from B updates B status at A
   b.send({ op: 'event', event: { kind: 'mood', mood: 'tired', text: '在上课，晚点聊' } })
   const evA = await a.wait('event')
-  assert.equal(evA.event.mood, 'tired')
-  const ps = await a.wait('partner_status', m => m.partner.mood === 'tired')
+  assert.equal(evA.event.mood, 'sleepy')
+  const ps = await a.wait('partner_status', m => m.partner.mood === 'sleepy')
   assert.equal(ps.partner.text, '在上课，晚点聊'); assert.equal(ps.partner.online, true)
 
   b.send({ op: 'event', event: { kind: 'phrase', e: 'eyes', text: '在干嘛？' } })

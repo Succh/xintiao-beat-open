@@ -12,10 +12,11 @@ import android.widget.TextView;
 
 /** Tiny programmatic-UI kit. Sizes are given in the mockup's CSS px (540 px wide screen) and scaled. */
 final class Ui {
-    static final int PINK = 0xFFFF8FB8, PINK_DEEP = 0xFFF06A9F, LAV = 0xFFB79CFF, LAV_DEEP = 0xFF8E6CF0;
-    static final int PINK_TINT = 0xFFFFE3EE, LAV_TINT = 0xFFEEE6FF;
-    static final int BG = 0xFFFFF6FA, CARD = 0xFFFFFFFF, TEXT = 0xFF3A2E45, MUTED = 0xFF8E7F9C, LINE = 0xFFF3E6EF;
-    static final int ONLINE = 0xFF7EE0B5, OFFLINE = 0xFFD9CCE2, OK = 0xFF3FAE84, TIP = 0xFF5E4E78;
+    static final int PINK = 0xFFFF8FB8, PINK_DEEP = 0xFFE85A93, LAV = 0xFFB79CFF, LAV_DEEP = 0xFF7E5AE8;
+    static final int PINK_TINT = 0xFFFFE8F0, LAV_TINT = 0xFFF0EAFF;
+    static final int BG = 0xFFFFF7FB, CARD = 0xFFFFFFFF, TEXT = 0xFF2F2438, MUTED = 0xFF8A7B98, LINE = 0xFFF5EAF1;
+    static final int ONLINE = 0xFF7EE0B5, OFFLINE = 0xFFD9CCE2, OK = 0xFF3FAE84, TIP = 0xFF6B5A82;
+    static final int GLASS = 0xCCFFFFFF;
     static final int MATCH = LinearLayout.LayoutParams.MATCH_PARENT, WRAP = LinearLayout.LayoutParams.WRAP_CONTENT;
 
     final Context ctx;
@@ -86,15 +87,23 @@ final class Ui {
         return l;
     }
 
-    /** White rounded card with a soft lavender shadow. */
+    /** White rounded card with a soft pink–lavender shadow. */
     LinearLayout card() {
         LinearLayout l = col();
-        l.setBackground(roundCss(CARD, 24));
-        l.setElevation(px(5));
+        l.setBackground(roundCss(CARD, 26));
+        l.setElevation(px(7));
         if (android.os.Build.VERSION.SDK_INT >= 28) {
-            l.setOutlineSpotShadowColor(0x55B79CFF);
-            l.setOutlineAmbientShadowColor(0x33B79CFF);
+            l.setOutlineSpotShadowColor(0x66FF8FB8);
+            l.setOutlineAmbientShadowColor(0x44B79CFF);
         }
+        return l;
+    }
+
+    /** Soft tip / guide panel. */
+    LinearLayout tipCard() {
+        LinearLayout l = col();
+        l.setBackground(gradient(0xFFFFE8F0, 0xFFF0EAFF, 22));
+        l.setElevation(px(2));
         return l;
     }
 

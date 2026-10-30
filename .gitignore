@@ -5,8 +5,6 @@ keys/
 *.pem
 keystore.properties
 *.keystore
-.env
-.env.*
 
 # local build caches
 **/node_modules/
@@ -23,7 +21,6 @@ server/data/
 server/*.log
 *.log
 
-# prebuilt packages (may bake real server URLs) — build yourself
-out/
+# generated packages live in out/; ignore local tool caches
 phone/dist/
 .temp_band/

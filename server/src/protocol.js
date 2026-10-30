@@ -1,6 +1,14 @@
 'use strict'
-// Shared vocabulary (keep in sync with band/src/common/data.js and phone Moods.java)
-const MOODS = ['happy', 'miss', 'tired', 'angry', 'aggrieved', 'busy', 'hungry', 'night']
+// Shared vocabulary (keep in sync with band/src/common/data.js and phone Logic.java)
+const MOODS = [
+  'miss_you', 'sweet', 'love', 'warm', 'happy', 'soft', 'shy', 'clingy',
+  'sleepy', 'cozy', 'excited', 'grateful', 'playful', 'calm'
+]
+const MOOD_ALIASES = {
+  miss: 'miss_you', tired: 'sleepy', angry: 'soft', aggrieved: 'soft',
+  busy: 'calm', hungry: 'cozy', night: 'sleepy', jealous: 'shy',
+  cheer: 'excited', melt: 'love'
+}
 const EVENT_KINDS = ['miss', 'mood', 'phrase', 'poke', 'ack']
 const MISS_LEVELS = ['short', 'long', 'poke3']
 const MODES = ['notify', 'full']
@@ -22,6 +30,11 @@ function str(v, max) {
   return Array.from(v.trim()).slice(0, max).join('')
 }
 
+function canonicalizeMood(id) {
+  if (!id || typeof id !== 'string') return ''
+  return MOOD_ALIASES[id] || id
+}
+
 // Validate + normalise an event coming from a client. Returns null if invalid.
 function cleanEvent(e) {
   if (!e || typeof e !== 'object') return null
@@ -31,8 +44,9 @@ function cleanEvent(e) {
   if (kind === 'miss') out.level = MISS_LEVELS.indexOf(e.level) >= 0 ? e.level : 'short'
   if (kind === 'poke') { out.kind = 'miss'; out.level = 'poke3' }
   if (kind === 'mood') {
-    if (MOODS.indexOf(e.mood) < 0) return null
-    out.mood = e.mood
+    const mood = canonicalizeMood(e.mood)
+    if (MOODS.indexOf(mood) < 0) return null
+    out.mood = mood
     out.text = str(e.text, LIMITS.text)
   }
   if (kind === 'phrase') {
@@ -45,4 +59,4 @@ function cleanEvent(e) {
   return out
 }
 
-module.exports = { MOODS, EVENT_KINDS, MISS_LEVELS, MODES, LIMITS, str, cleanEvent }
+module.exports = { MOODS, MOOD_ALIASES, EVENT_KINDS, MISS_LEVELS, MODES, LIMITS, str, canonicalizeMood, cleanEvent }

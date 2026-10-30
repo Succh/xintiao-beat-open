@@ -7,12 +7,31 @@ import java.util.Locale;
 public final class Logic {
     private Logic() {}
 
-    public static final String[] MOOD_IDS = {"happy", "miss", "tired", "angry", "aggrieved", "busy", "hungry", "night"};
-    public static final String[] MOOD_LABELS = {"开心", "想你", "累了", "生气", "委屈", "忙碌", "饿了", "晚安"};
+    /** Featured first three: miss_you / sweet / love (default highlight). */
+    public static final String[] MOOD_IDS = {
+        "miss_you", "sweet", "love", "warm", "happy", "soft", "shy", "clingy",
+        "sleepy", "cozy", "excited", "grateful", "playful", "calm"
+    };
+    public static final String[] MOOD_LABELS = {
+        "想你", "甜甜", "喜欢", "暖暖", "开心", "软软", "害羞", "黏你",
+        "困困", "窝着", "兴奋", "感谢", "调皮", "平静"
+    };
+
+    /** Old 0.1.2/early-0.1.3 ids → canonical. */
+    private static final String[][] MOOD_ALIASES = {
+        {"miss", "miss_you"}, {"tired", "sleepy"}, {"angry", "soft"}, {"aggrieved", "soft"},
+        {"busy", "calm"}, {"hungry", "cozy"}, {"night", "sleepy"}, {"jealous", "shy"},
+        {"cheer", "excited"}, {"melt", "love"}
+    };
 
     private static final String[][] EMOJI = {
-        {"happy", "😊"}, {"miss", "🥰"}, {"tired", "😪"}, {"angry", "😤"}, {"aggrieved", "🥺"},
-        {"busy", "💼"}, {"hungry", "🍜"}, {"night", "🌙"}, {"eyes", "👀"}, {"heart", "💗"},
+        {"miss_you", "🥰"}, {"sweet", "🍬"}, {"love", "😍"}, {"warm", "🌸"}, {"happy", "😊"},
+        {"soft", "🥺"}, {"shy", "😳"}, {"clingy", "🥹"}, {"sleepy", "😴"}, {"cozy", "☕"},
+        {"excited", "🤩"}, {"grateful", "🙏"}, {"playful", "😜"}, {"calm", "😌"},
+        /* legacy keys kept for phrases + old payloads */
+        {"miss", "🥰"}, {"tired", "😪"}, {"angry", "😤"}, {"aggrieved", "🥺"},
+        {"busy", "💼"}, {"hungry", "🍜"}, {"night", "🌙"}, {"jealous", "😒"}, {"cheer", "💪"}, {"melt", "🫠"},
+        {"eyes", "👀"}, {"heart", "💗"},
         {"rice", "🍚"}, {"run", "🏃"}, {"chat", "💬"}, {"hearts", "💕"}, {"poke", "👉"},
         {"coffee", "☕"}, {"party", "🎉"}, {"kiss", "😘"}, {"hug", "🤗"}, {"wave", "👋"},
         {"home", "🏠"}, {"phone", "📞"}, {"book", "📚"}, {"ok", "👌"}, {"sun", "🌅"}, {"sparkle", "✨"},
@@ -33,18 +52,37 @@ public final class Logic {
 
     public static String emoji(String key) {
         if (key == null) return "💬";
-        for (String[] e : EMOJI) if (e[0].equals(key)) return e[1];
+        // Prefer canonical mood glyph when legacy id aliases (tired→sleepy etc.)
+        String c = canonicalizeMood(key);
+        for (String[] e : EMOJI) if (e[0].equals(c)) return e[1];
+        if (!c.equals(key)) for (String[] e : EMOJI) if (e[0].equals(key)) return e[1];
         return "💬";
     }
 
+    /** Map legacy mood id to canonical; unknown returns original. */
+    public static String canonicalizeMood(String id) {
+        if (id == null || id.isEmpty()) return id == null ? "" : id;
+        for (String[] a : MOOD_ALIASES) if (a[0].equals(id)) return a[1];
+        return id;
+    }
+
     public static String moodLabel(String id) {
-        if (id == null) return "";
-        for (int i = 0; i < MOOD_IDS.length; i++) if (MOOD_IDS[i].equals(id)) return MOOD_LABELS[i];
-        return "";
+        if (id == null || id.isEmpty()) return "";
+        String c = canonicalizeMood(id);
+        for (int i = 0; i < MOOD_IDS.length; i++) if (MOOD_IDS[i].equals(c)) return MOOD_LABELS[i];
+        return "心情"; // unknown id: degrade for old/new client mismatch
     }
 
     public static boolean isMood(String id) {
-        return moodLabel(id).length() > 0;
+        if (id == null || id.isEmpty()) return false;
+        String c = canonicalizeMood(id);
+        for (String m : MOOD_IDS) if (m.equals(c)) return true;
+        return false;
+    }
+
+    /** Display helper: known mood uses label; unknown non-empty id still shows something. */
+    public static boolean hasMoodDisplay(String id) {
+        return id != null && !id.isEmpty();
     }
 
     public static String timeAgo(long ts, long now) {

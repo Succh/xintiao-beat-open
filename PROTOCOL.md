@@ -6,7 +6,7 @@ Band → phone
 |---|---|---|
 | hello | – | band opened, please send `state` |
 | miss | level: short \| long \| poke3 | 想你了 (tap = short, long-press = long) |
-| mood | mood: happy…night | set my mood |
+| mood | mood: happy…melt (14 ids) | set my mood |
 | phrase | e, text | send a quick phrase |
 | ack | – | 收到 on the incoming screen |
 | pair_code | – | ask for a pairing code to show on the band |
@@ -24,5 +24,5 @@ Client → server: `hello{uid?,token?,name,avatar,device,mode}`, `pair_code`, `p
 
 Server → client: `welcome{uid,token,me,paired,partner,pairedAt,history}`, `pair_code{code,expiresAt}`, `paired{partner}`, `pair_error{reason}`, `event{event}`, `sent{event,delivered}`, `delivered{ids}`, `partner_status{partner}`, `me`, `mode_changed{mode,by}`, `history{events}`, `unpaired`, `error{reason}`, `pong`.
 
-Moods: happy 开心 · miss 想你 · tired 累了 · angry 生气 · aggrieved 委屈 · busy 忙碌 · hungry 饿了 · night 晚安.
+Moods: happy 开心 · miss 想你 · tired 累了 · angry 生气 · aggrieved 委屈 · busy 忙碌 · hungry 饿了 · night 晚安 · shy 害羞 · jealous 吃醋 · cheer 加油 · love 喜欢 · clingy 黏你 · melt 融化.
 Modes: `notify` (Android notification, mirrored to the watch by Mi Fitness) · `full` (band/watch app via Mi Wear SDK, falls back to notify).
