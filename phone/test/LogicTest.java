@@ -58,6 +58,23 @@ public class LogicTest {
         eq("full", Logic.detectMode("Xiaomi Smart Band 9 Pro", true), "detect full");
         eq("通知模式", Logic.modeLabel("notify"), "mode label");
 
+
+        // 0.1.4 copy helpers
+        eq("已送出", Logic.sendFeedback(true), "send online");
+        eq("已存着，连上就送", Logic.sendFeedback(false), "send outbox");
+        eq("宝贝 的表只能看通知，回消息请用手机", Logic.notifyModeHomeTip(true, false, "宝贝"), "notify tip partner");
+        eq("我的表只能看通知，回消息请用手机", Logic.notifyModeHomeTip(false, true, "宝贝"), "notify tip me");
+        eq("表上只能看通知，回消息请用手机", Logic.notifyModeHomeTip(true, true, "宝贝"), "notify tip both");
+        eq("", Logic.notifyModeHomeTip(false, false, "宝贝"), "notify tip none");
+        eq("打开小米运动健康，确认手环已连接后再点", Logic.wearRetryFailHint(), "wear retry");
+        eq(true, Logic.isXiaomiFamily("Xiaomi", "Redmi"), "xiaomi family");
+        eq(false, Logic.isXiaomiFamily("samsung", "samsung"), "not xiaomi");
+        eq("自启动 · 省电无限制 · 多任务上锁", Logic.keepAliveRowSub(true), "ka row xm");
+        eq("关闭电池优化，避免被系统杀掉", Logic.keepAliveRowSub(false), "ka row other");
+        eq(true, Logic.keepAliveToast(true).contains("自启动"), "ka toast xm");
+        eq("安装到你的表", Logic.installGuideTitle(), "guide title");
+        eq(true, Logic.fullDualVibrateTip(true, false).contains("完整 App"), "dual vib tip");
+
         System.out.println(passes + " passed, " + fails + " failed");
         if (fails > 0) System.exit(1);
     }

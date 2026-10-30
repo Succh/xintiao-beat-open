@@ -445,7 +445,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             ui.pad(tip, 18, 14, 18, 14);
             tip.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
             tip.setOnClickListener(v -> showBandInstallGuide());
-            TextView tipTitle = ui.text("⌚ 还差一步：把手环 App 装上", 15, Ui.TEXT, true);
+            TextView tipTitle = ui.text("⌚ 还差一步：装到你的表上", 15, Ui.TEXT, true);
             TextView tipBody = ui.text("点这里看完整中文步骤（AstroBox · 安装 · 切回小米运动健康）。装好后手环能弹心情和特效。", 13, Ui.TIP, false);
             tipBody.setLineSpacing(0, 1.35f);
             tipBody.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
@@ -471,6 +471,23 @@ public class MainActivity extends Activity implements Hub.Listener {
         duo.addView(me, mp);
         c.addView(duo);
 
+        // mode tips: notify-only reply hint, or full dual-vibrate note
+        if (hub.paired()) {
+            boolean pNotify = "notify".equals(p.optString("mode", ""));
+            boolean meNotify = "notify".equals(hub.mode());
+            boolean pFull = "full".equals(p.optString("mode", ""));
+            boolean meFull = "full".equals(hub.mode());
+            String modeTip = Logic.notifyModeHomeTip(pNotify, meNotify, pName);
+            if (modeTip.isEmpty()) modeTip = Logic.fullDualVibrateTip(meFull, pFull);
+            if (!modeTip.isEmpty()) {
+                TextView nt = ui.text("ℹ️  " + modeTip, 13, Ui.TIP, false);
+                nt.setBackground(ui.roundCss(Ui.LAV_TINT, 16));
+                ui.pad(nt, 16, 10, 16, 10);
+                nt.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
+                c.addView(nt);
+            }
+        }
+
         TextView miss = ui.pill("💗  想你了", 22, Color.WHITE, Ui.PINK, 72);
         miss.setElevation(ui.px(10));
         if (android.os.Build.VERSION.SDK_INT >= 28) {
@@ -479,9 +496,9 @@ public class MainActivity extends Activity implements Hub.Listener {
         }
         miss.setLayoutParams(ui.lp(Ui.MATCH, ui.px(72), 24, 18, 24, 0));
         miss.setOnClickListener(v -> { hub.sendMiss("short", "phone"); pulse(v); });
-        miss.setOnLongClickListener(v -> { hub.sendMiss("long", "phone"); pulse(v); onToast("好想好想你 💞"); return true; });
+        miss.setOnLongClickListener(v -> { hub.sendMiss("long", "phone"); pulse(v); return true; });
         c.addView(miss);
-        TextView hint = ui.text("轻点：振一下　长按：持续振动", 12, Ui.MUTED, false);
+        TextView hint = ui.text("轻点短振 · 长按更想", 12, Ui.MUTED, false);
         hint.setGravity(Gravity.CENTER);
         hint.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
         c.addView(hint);
@@ -866,7 +883,11 @@ public class MainActivity extends Activity implements Hub.Listener {
         else sub = (hub.wear.appInstalled() ? "已装「心跳」" : "手环上还没装「心跳」") + (hub.wear.wearing() ? " · 佩戴中" : "");
         w.addView(deviceRow(myDev, sub, hub.wear.hasNode() && !hub.wear.permitted() ? "去授权" : "重新检测", v -> {
             if (hub.wear.hasNode() && !hub.wear.permitted()) hub.wear.requestPermission();
-            else { hub.redetect(); onToast("正在检测…"); }
+            else {
+                boolean had = hub.wear.hasNode();
+                hub.redetect();
+                onToast(had ? "正在检测…" : Logic.wearRetryFailHint());
+            }
         }));
         String myMode = hub.mode();
         boolean myFullOk = !hub.wear.hasNode() || Logic.canRunQuickApp(hub.wear.deviceName());
@@ -891,7 +912,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout.LayoutParams igLp = ui.lp(0, Ui.WRAP, 12, 0, 0, 0);
         igLp.weight = 1;
         igBody.setLayoutParams(igLp);
-        igBody.addView(ui.text("安装手环 App", 15, Ui.TEXT, true));
+        igBody.addView(ui.text(Logic.installGuideTitle(), 15, Ui.TEXT, true));
         String igSub = hub.wear.appInstalled()
             ? "已检测到「心跳」已安装 · 点开可复习步骤"
             : (hub.wear.hasNode() ? "手环已连接，按引导装上「心跳」" : "先连接手环，再按步骤用 AstroBox 安装");
@@ -947,7 +968,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout box = ui.card();
         box.addView(settingRow("睡眠时免打扰", "23:30 – 07:30 手机静默；手环仍显示但不振", toggle(hub.quietEnabled()), v -> hub.setQuiet(!hub.quietEnabled())));
         box.addView(ui.divider());
-        box.addView(settingRow("保持后台运行", "关闭电池优化、允许自启动", link(batteryOk() ? "已设置 ›" : "去设置 ›"), v -> keepAlive()));
+        box.addView(settingRow("保持后台运行", Logic.keepAliveRowSub(isXiaomiFamily()), link(batteryOk() ? "已设置 ›" : "去设置 ›"), v -> keepAlive()));
         box.addView(ui.divider());
         box.addView(settingRow("我的昵称和头像", hub.myName() + " " + Logic.emoji(hub.myAvatar()), link("修改 ›"), v -> editProfile()));
         box.addView(ui.divider());
@@ -988,7 +1009,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout c = ui.col();
         ui.pad(c, 22, 10, 22, 16);
 
-        TextView head = ui.text("安装手环 App", 20, Ui.TEXT, true);
+        TextView head = ui.text(Logic.installGuideTitle(), 20, Ui.TEXT, true);
         c.addView(head);
         TextView prog = ui.text("第 " + (guidePage + 1) + " / 7 步", 13, Ui.MUTED, false);
         prog.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 4, 0, 0));
@@ -1010,8 +1031,8 @@ public class MainActivity extends Activity implements Hub.Listener {
         Runnable action = null;
         switch (guidePage) {
             case 0:
-                title = "① 先给手环充电";
-                body = "把手环电量充到大约 20% 以上，装应用更稳。\n\n本页只做一件事：确认电量够了。";
+                title = "① 先给手表/手环充电";
+                body = "把表电量充到大约 20% 以上，装应用更稳。\n\n本页只做一件事：确认电量够了。";
                 primary = "电量够了，下一步";
                 break;
             case 1:
@@ -1026,7 +1047,7 @@ public class MainActivity extends Activity implements Hub.Listener {
                 break;
             case 3:
                 title = "④ 用 AstroBox 装「心跳」";
-                body = "请按顺序做完再点下一步：\n1. 浏览器打开 https://abox.run 下载安装 AstroBox V2\n2. 手机设置里结束「小米运动健康」\n3. 手环：设置 → 系统操作 → 连接新手机 → 点蓝勾\n4. AstroBox 连上手环后：队列 → ＋ → 快应用 → 选下载里的\n   com.xintiao.beat.debug.0.1.3.rpk\n5. 等到 100%，手环应用列表出现粉色「心跳」";
+                body = "请按顺序做完再点下一步：\n1. 浏览器打开 https://abox.run 下载安装 AstroBox V2\n2. 手机设置里结束「小米运动健康」（搜不到表时必做）\n3. 表上：设置 → 系统操作 → 连接新手机 → 点蓝勾\n4. AstroBox 连上表后：队列 → ＋ → 快应用 → 选下载里的\n   com.xintiao.beat.debug.0.1.4.rpk\n5. 等到 100%，表应用列表出现粉色「心跳」\n\n若 AstroBox 仍搜不到：再结束一次运动健康，表上再点「连接新手机」。";
                 primary = "我装好了，下一步";
                 break;
             case 4:
@@ -1042,8 +1063,8 @@ public class MainActivity extends Activity implements Hub.Listener {
                 break;
             default:
                 title = "⑦ 试发一条";
-                body = "回到首页，点「想你了」。\n· 若手环已装「心跳」：手腕应短振并弹出\n· 若是 Watch 3：走通知，表上显示文字即可\n\n也可点下面按钮立刻试发。";
-                primary = "试发「想你了」";
+                body = "点下面立刻发一条「想你了」，看手环是否弹出或振动。\n· 已装「心跳」：手腕应短振并弹出\n· Watch 3（通知模式）：表上显示文字即可\n\n发出后手机上会提示「已送出」或「已存着，连上就送」。";
+                primary = "试一下";
                 action = () -> hub.sendMiss("short", "phone");
                 break;
         }
@@ -1166,7 +1187,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         bp.leftMargin = ui.px(12);
         o.addView(b, bp);
         o.setOnClickListener(v -> {
-            if (!enabled) { onToast("这台手表不支持完整手表 App"); return; }
+            if (!enabled) { onToast("当前表不支持快应用，只能用通知模式"); return; }
             if (!on) pick.pick(mode);
         });
         o.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 0, 0, 10));
@@ -1204,16 +1225,33 @@ public class MainActivity extends Activity implements Hub.Listener {
         return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
     }
 
+    private boolean isXiaomiFamily() {
+        return Logic.isXiaomiFamily(android.os.Build.MANUFACTURER, android.os.Build.BRAND);
+    }
+
     private void keepAlive() {
+        boolean xm = isXiaomiFamily();
         if (!batteryOk()) {
             try {
                 startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+                // Still hint Xiaomi extras; other OEMs stop at battery opt
+                if (xm) onToast(Logic.keepAliveToast(true));
+                else onToast(Logic.keepAliveToast(false));
                 return;
             } catch (Exception ignored) { }
         }
-        // MIUI / HyperOS: autostart + battery saver live on the app-info page
-        onToast("在「自启动」打开开关，「省电策略」选「无限制」");
-        startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        onToast(Logic.keepAliveToast(xm));
+        if (xm) {
+            // HyperOS/MIUI: autostart + unrestricted + lock in recents live near app-info
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        } else {
+            // Other Android: only battery optimization; no 自启动 wording
+            try {
+                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            } catch (Exception e) {
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+            }
+        }
     }
     /** Pink–purple couple FX ~480–600ms: glow, scale pulse, 6–8 hearts; haptic once; no sound. */
     private void playMoodFx() {

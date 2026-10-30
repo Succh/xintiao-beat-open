@@ -224,4 +224,62 @@ public final class Logic {
         if (!mine) return src;
         return src + (delivered ? " · 已送达" : " · TA 上线后送达");
     }
+    /** Phone toast after sendEvent: online vs outbox. */
+    public static String sendFeedback(boolean sentOnline) {
+        return sentOnline ? "已送出" : "已存着，连上就送";
+    }
+
+    /** Home tip when self and/or partner use notify mode. Empty if neither. */
+    public static String notifyModeHomeTip(boolean partnerNotify, boolean meNotify, String partnerName) {
+        if (!partnerNotify && !meNotify) return "";
+        if (partnerNotify && meNotify) return "表上只能看通知，回消息请用手机";
+        if (partnerNotify) {
+            String who = (partnerName == null || partnerName.isEmpty()) ? "TA" : partnerName;
+            return who + " 的表只能看通知，回消息请用手机";
+        }
+        return "我的表只能看通知，回消息请用手机";
+    }
+
+    /** Shown when band re-detect fails / not connected. */
+    public static String wearRetryFailHint() {
+        return "打开小米运动健康，确认手环已连接后再点";
+    }
+
+    /** Xiaomi / Redmi / POCO / HyperOS family (MIUI-style autostart + battery pages). */
+    public static boolean isXiaomiFamily(String manufacturer, String brand) {
+        String m = manufacturer == null ? "" : manufacturer.toLowerCase(Locale.ROOT);
+        String b = brand == null ? "" : brand.toLowerCase(Locale.ROOT);
+        for (String k : new String[]{"xiaomi", "redmi", "poco", "blackshark"}) {
+            if (m.contains(k) || b.contains(k)) return true;
+        }
+        return false;
+    }
+
+    /** Settings/keepAlive one-liner under the row. */
+    public static String keepAliveRowSub(boolean xiaomiFamily) {
+        return xiaomiFamily
+            ? "自启动 · 省电无限制 · 多任务上锁"
+            : "关闭电池优化，避免被系统杀掉";
+    }
+
+    /** Toast after opening app-info / battery page. */
+    public static String keepAliveToast(boolean xiaomiFamily) {
+        return xiaomiFamily
+            ? "① 自启动打开  ② 省电策略选「无限制」  ③ 多任务界面下拉上锁"
+            : "请允许忽略电池优化，保持后台连接";
+    }
+
+    /** Home tip when both sides use full (phone notify + band popup may both fire). */
+    public static String fullDualVibrateTip(boolean meFull, boolean partnerFull) {
+        if (!meFull && !partnerFull) return "";
+        if (meFull && partnerFull) return "双方都是完整 App：手机通知和手表可能都会振一下";
+        if (meFull) return "我是完整 App：手机通知和手表可能都会振一下";
+        return "TA 是完整 App：手机通知和手表可能都会振一下";
+    }
+
+    /** Guide sheet title — not locked to Band 9 Pro. */
+    public static String installGuideTitle() {
+        return "安装到你的表";
+    }
+
 }

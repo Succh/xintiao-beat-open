@@ -116,6 +116,10 @@ public final class Hub {
     }
 
     public void setMode(String mode, boolean byUser) {
+        if ("full".equals(mode) && wear.hasNode() && !Logic.canRunQuickApp(wear.deviceName())) {
+            toast("当前表不支持快应用，已改为通知模式");
+            mode = "notify";
+        }
         SharedPreferences.Editor ed = sp.edit().putString("mode", mode);
         if (byUser) ed.putBoolean("mode_auto", false);
         ed.apply();
@@ -262,8 +266,10 @@ public final class Hub {
         }
         if (!relay.send(o)) {
             outboxAdd(o);
-            toast("网络断开，已存起来，连上后自动发送");
+            if ("phone".equals(via)) toast(Logic.sendFeedback(false));
             if ("band".equals(via)) bandSent(false);
+        } else {
+            if ("phone".equals(via)) toast(Logic.sendFeedback(true));
         }
     }
 
@@ -542,9 +548,16 @@ public final class Hub {
 
     /** Wearable connection / detection changed. */
     void onWearChanged() {
-        if (modeAuto() && wear.hasNode()) {
-            String m = Logic.detectMode(wear.deviceName(), wear.appInstalled());
-            sp.edit().putString("mode", m).apply();
+        if (wear.hasNode()) {
+            String name = wear.deviceName();
+            // Watch 3 etc.: never stay on full, even if user locked mode_auto=false
+            if (!Logic.canRunQuickApp(name) && "full".equals(mode())) {
+                sp.edit().putString("mode", "notify").putBoolean("mode_auto", false).apply();
+                toast("当前表不支持快应用，已改为通知模式");
+            } else if (modeAuto()) {
+                String m = Logic.detectMode(name, wear.appInstalled());
+                sp.edit().putString("mode", m).apply();
+            }
         }
         sendStatus();
         pushStateToBand();

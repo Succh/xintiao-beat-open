@@ -1,5 +1,9 @@
 # 心跳 Beat relay – deployment notes
 
+## Hosted / free tiers (optional)
+
+Some free hosts pause after a few hours. The phone app reconnects and flushes its outbox (`cid`) after the relay is back. For always-on, use a VPS (below) or a paid always-on plan.
+
 ## Generic VPS option
 
 ## What it is

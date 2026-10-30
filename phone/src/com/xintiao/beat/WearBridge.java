@@ -74,7 +74,7 @@ final class WearBridge {
             nodeApi.getConnectedNodes()
                 .addOnSuccessListener(nodes -> hub.main.post(() -> onNodes(nodes)))
                 .addOnFailureListener(e -> hub.main.post(() -> {
-                    fail("找不到已连接的手环/手表", e);
+                    fail(Logic.wearRetryFailHint(), e);
                     nodeId = null;
                     hub.onWearChanged();
                 }));
@@ -87,7 +87,7 @@ final class WearBridge {
         if (nodes == null || nodes.isEmpty()) {
             nodeId = null;
             nodeName = "";
-            lastError = "小米运动健康里没有已连接的设备";
+            lastError = Logic.wearRetryFailHint();
             hub.onWearChanged();
             return;
         }
@@ -117,7 +117,7 @@ final class WearBridge {
 
     /** Pops Mi Fitness' own permission dialog. Call from a user tap. */
     void requestPermission() {
-        if (nodeId == null) { refresh(); hub.toast("先在小米运动健康里连上手环"); return; }
+        if (nodeId == null) { refresh(); hub.toast(Logic.wearRetryFailHint()); return; }
         try {
             authApi.requestPermission(nodeId, Permission.DEVICE_MANAGER, Permission.NOTIFY)
                 .addOnSuccessListener(granted -> hub.main.post(() -> {

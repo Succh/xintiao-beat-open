@@ -2,7 +2,7 @@
 
 情侣之间的「想你了」——手机 App + 小米手环/手表快应用 + 中继服务器。
 
-当前版本：**0.1.3**（手机 `versionCode` 4，手环 `versionCode` 3）。
+当前版本：**0.1.4**（手机 `versionCode` 5，手环 `versionCode` 4）。
 
 > **公开仓库说明**：本仓库是脱敏公开版，**不含**预配置安装包（`out/`）、签名密钥（`keys/`）、真实服务器地址或部署账号信息。请自行部署中继，并用 `BEAT_SERVER=…` 构建手机 App（或在 App 设置里填写 `wss://…/ws`）。
 
@@ -51,7 +51,7 @@
 
 ## 配对流程（简述）
 
-1. 两人手机都装 `beat-0.1.3.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
+1. 两人手机都装 `beat-0.1.4.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
 2. 打开「心跳」，设昵称；请自建中继，构建时用 `BEAT_SERVER` 烘焙地址，或在 App「设置 → 服务器」填写。
 3. 一方点出 6 位配对码发给对方；另一方输入后点「开始配对」。
 4. 能装快应用的手环再按 INSTALL 用 AstroBox 装 `.rpk`，装完切回小米运动健康，并在 App 里「去授权」。
@@ -60,27 +60,31 @@
 
 ## 服务器
 
-部署完成后两端填同一个地址，例如：
+请自建中继（见 [`server/DEPLOY.md`](./server/DEPLOY.md)）。WebSocket 地址形如：
 
 ```text
 wss://beat.example.com/ws
 ```
 
-公开库不附带预配置 apk。自建请看 [`server/DEPLOY.md`](./server/DEPLOY.md)。  
-断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
+构建手机包时用环境变量烘焙，或在 App「设置 → 服务器」填写。断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
 
 > 仓库**不包含**签名私钥、keystore、API key。`keys/` 仅本地构建使用，已被 `.gitignore` 排除。
 
-## 构建安装包
+## 安装包（构建产物）
 
-公开库**不附带**已烘焙真实地址的 apk/rpk。本地构建：
+本地构建后放在 `out/`：
+
+- `out/beat-0.1.4.apk` — 手机
+- `out/com.xintiao.beat.debug.0.1.4.rpk` — 手环调试包（常用）
+- `out/com.xintiao.beat.release.0.1.4.rpk` — 手环正式签名包（备用）
 
 ```bash
-# 1. 准备签名材料到 keys/（勿提交）
-# 2. 手机
+# 手机（自建 wss）
 BEAT_SERVER='wss://beat.example.com/ws' ./phone/build.sh
-# 3. 手环
+
+# 手环
 cd band && npm i && npm run build && npm run release
+# 再把 dist 里的 .rpk 拷到 ../out/
 ```
 
 单测：`cd server && npm test` · `./phone/test.sh` · `cd band && npm test`。
@@ -105,7 +109,8 @@ band-couple-app/
 
 | 版本 | 说明 |
 |---|---|
-| **0.1.3** | 心情 14（miss_you/sweet/love…，旧 id 兼容）；手机粉紫特效 560ms+心形粒子；7 步小白「安装手环」引导（AstroBox→切回→试发）；UI 精致化；手环轻量短动效；Watch 3 禁选 full |
+| **0.1.4** | 想你了「轻点短振 · 长按更想」；发出「已送出/已存着」；notify 常驻提示；手环重试失败文案；Watch3 强制 notify；HyperOS 保活三句；引导「安装到你的表」+ AstroBox 搜不到提示 |
+| 0.1.3 | 心情 14（miss_you/sweet/love…，旧 id 兼容）；手机粉紫特效；7 步安装引导；Watch 3 禁选 full |
 | 0.1.2 | 免打扰：手环 silent 仍显示；outbox 持久化 + `cid`；手环 interconnect `JSON.stringify`；首页戳三下；版本对齐 |
 | 0.1.1 | 手机打包可写入 `BEAT_SERVER`；自建中继部署文档 |
 | 0.1.0 | MVP |
