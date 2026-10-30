@@ -1,49 +1,5 @@
 # 心跳 Beat relay – deployment notes
 
-## Live deployment: instabox (`succh-relay`)
-Deployed 2026-10-30 on the user's existing instabox machine **`succh-relay`** (free plan, Debian 13, Node 22 preinstalled).
-
-- Public URL: `https://8787-agqyzrc3avii2vtxe6iswqfr5m.instabox.tech` (health: `/health`)
-- Phone app server address: **`wss://8787-agqyzrc3avii2vtxe6iswqfr5m.instabox.tech/ws`** (baked into `beat-0.1.1.apk`)
-- TLS is terminated by instabox's port proxy (WebSockets pass through); no Caddy/domain needed.
-- Code: `/data/workspace/beat-server` on the machine; data: `/data/workspace/beat-server/data/beat.json` (persistent disk).
-- Service: systemd unit `beat.service` (enabled, `Restart=always`, `User=user`); survives reboots (tested).
-
-### Steps used (from a computer with the instabox CLI and an API key in `INSTABOX_API_KEY`)
-```bash
-IB="npx -y instabox@latest"
-$IB ls                                              # find the machine
-$IB push succh-relay server /data/workspace/beat-server   # git-tracked files only
-$IB exec succh-relay -- 'cd /data/workspace/beat-server && npm ci && npm test'
-$IB exec succh-relay -- 'mkdir -p /data/workspace/beat-server/data && sudo tee /etc/systemd/system/beat.service >/dev/null <<UNIT
-[Unit]
-Description=Xintiao Beat relay
-After=network-online.target
-Wants=network-online.target
-[Service]
-WorkingDirectory=/data/workspace/beat-server
-ExecStart=/usr/local/bin/node src/index.js
-Environment=PORT=8787 HOST=0.0.0.0 DATA_FILE=/data/workspace/beat-server/data/beat.json
-Restart=always
-RestartSec=2
-User=user
-[Install]
-WantedBy=multi-user.target
-UNIT
-sudo systemctl daemon-reload && sudo systemctl enable --now beat'
-$IB port publish succh-relay 8787 --name beat-relay --public   # prints the https URL; stable, kept until unpublished
-node test/e2e-remote.js wss://8787-agqyzrc3avii2vtxe6iswqfr5m.instabox.tech/ws   # from any computer
-```
-Update the code later: `$IB push succh-relay server /data/workspace/beat-server && $IB exec succh-relay -- 'cd /data/workspace/beat-server && npm ci --omit=dev && sudo systemctl restart beat'`.
-Logs: `$IB exec succh-relay -- 'journalctl -u beat -n 50 --no-pager'`.
-
-### Free-plan limits (important)
-- **Idle pause after 30 min** (fixed on free). Idle = no exec/SSH/terminal, no CPU, no public port requests; it is not documented whether an open but quiet WebSocket counts as activity. A self-paused machine **wakes automatically on a request to the public URL** (the request waits up to 45 s), so the phones' reconnect usually wakes it; processes and memory are kept across a pause.
-- **Max runtime 480 min (8 h)**, then a forced pause plus a **5–20 min cooldown** in which nothing can wake it. So expect a short outage about every 8 hours; the app's offline queue/reconnect covers it, but realtime pokes in that window are delayed.
-- A pause/stop done **by hand** (dashboard or `instabox suspend/stop`) is not woken by the URL: run `instabox resume succh-relay` / `instabox start succh-relay`.
-- From 2026-12-01 early free accounts may run only **one** free sandbox at a time (the most recently active). Other machines on the account (`succh-main`, `succh-nanomuse`) can then pause the relay.
-- For truly always-on use: a paid instabox plan (`instabox auto-suspend succh-relay 0`, `instabox max-run succh-relay -1`) or the VPS setup below.
-
 ## Generic VPS option
 
 ## What it is
