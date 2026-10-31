@@ -332,7 +332,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         });
         c.addView(go);
 
-        TextView tips = ui.text("新手怎么走\n① 两人都装好手机「心跳」并填同一个服务器\n② 一人点「生成配对码」，另一人输入 6 位数\n③ 配对成功后，去「设置 → 安装手环 App」按引导装上手环端\n配对码 5 分钟内有效；手环上的「心跳」也会显示同一码。", 13, Ui.TIP, false);
+        TextView tips = ui.text("新手怎么走\n① 两人都装好手机「心跳」（演示包已内置服务器，一般不用手填）\n② 一人点「生成配对码」，另一人输入 6 位数\n③ 配对成功后，能装快应用的表再去「设置 → 安装手环 App」\n配对码 5 分钟内有效；手环上的「心跳」也会显示同一码。", 13, Ui.TIP, false);
         tips.setLineSpacing(0, 1.45f);
         tips.setBackground(ui.roundCss(Ui.LAV_TINT, 20));
         ui.pad(tips, 20, 18, 20, 18);
@@ -815,7 +815,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout c = ui.col();
         ui.pad(c, 22, 22, 22, 18);
         c.addView(ui.text("服务器地址", 20, Ui.TEXT, true));
-        TextView tip = ui.text("你们两个人要填同一个地址，例如 wss://beat.example.com/ws", 13, Ui.MUTED, false);
+        TextView tip = ui.text("演示包一般已内置地址，不用改。自建时两个人填同一个 wss://…/ws", 13, Ui.MUTED, false);
         tip.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 8, 0, 0));
         c.addView(tip);
         EditText url = input("wss://…/ws", hub.serverUrl(), 200);
