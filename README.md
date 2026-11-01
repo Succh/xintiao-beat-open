@@ -2,7 +2,7 @@
 
 情侣之间的「想你了」——手机 App + 小米手环/手表快应用 + 中继服务器。
 
-当前版本：**0.1.5**（手机 `versionCode` 6，手环仍为 `0.1.4` / `versionCode` 4）。
+当前版本：**0.1.6**（手机 `versionCode` 7，手环 `0.1.6` / `versionCode` 5，两端同版）。
 
 > **公开仓库说明**：本仓库是脱敏公开版，**不含**预配置安装包（`out/`）、签名密钥（`keys/`）、真实服务器地址或部署账号信息。请自行部署中继，并用 `BEAT_SERVER=…` 构建手机 App（或在 App 设置里填写 `wss://…/ws`）。
 
@@ -51,7 +51,7 @@
 
 ## 配对流程（简述）
 
-1. 两人手机都装 `beat-0.1.5.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
+1. 两人手机都装 `beat-0.1.6.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
 2. 打开「心跳」，设昵称；请自建中继，构建时用 `BEAT_SERVER` 烘焙地址，或在 App「设置 → 服务器」填写。
 3. 一方点出 6 位配对码发给对方；另一方输入后点「开始配对」。
 4. 能装快应用的手环再按 INSTALL 用 AstroBox 装 `.rpk`，装完切回小米运动健康，并在 App 里「去授权」。
@@ -74,9 +74,9 @@ wss://beat.example.com/ws
 
 本地构建后放在 `out/`：
 
-- `out/beat-0.1.5.apk` — 手机
-- `out/com.xintiao.beat.debug.0.1.4.rpk` — 手环调试包（常用）
-- `out/com.xintiao.beat.release.0.1.4.rpk` — 手环正式签名包（备用）
+- `out/beat-0.1.6.apk` — 手机
+- `out/com.xintiao.beat.debug.0.1.6.rpk` — 手环调试包（常用）
+- `out/com.xintiao.beat.release.0.1.6.rpk` — 手环正式签名包（备用）
 
 ```bash
 # 手机（自建 wss）
@@ -109,8 +109,9 @@ band-couple-app/
 
 | 版本 | 说明 |
 |---|---|
-| **0.1.5** | 小白文案：配对页不再误导「先填服务器」；设置说明演示包可内置地址；INSTALL 同步 |
-| **0.1.4** | 想你了「轻点短振 · 长按更想」；发出「已送出/已存着」；notify 常驻提示；手环重试失败文案；Watch3 强制 notify；HyperOS 保活三句；引导「安装到你的表」+ AstroBox 搜不到提示 |
+| **0.1.6** | 心情长按 400ms 本机预览（松手不发）；首页底部「今天你们互换了 N 次心情」+ 今日列表（只读本地记录）；Watch 3 / notify 设备改为「通知镜像清单」3 步 + 本机试发 + 2 条排查，full 设备保持 AstroBox 引导；手环同步到 0.1.6 |
+| 0.1.5 | 小白文案：配对页不再误导「先填服务器」；设置说明演示包可内置地址；INSTALL 同步 |
+| 0.1.4 | 想你了「轻点短振 · 长按更想」；发出「已送出/已存着」；notify 常驻提示；手环重试失败文案；Watch3 强制 notify；HyperOS 保活三句；引导「安装到你的表」+ AstroBox 搜不到提示 |
 | 0.1.3 | 心情 14（miss_you/sweet/love…，旧 id 兼容）；手机粉紫特效；7 步安装引导；Watch 3 禁选 full |
 | 0.1.2 | 免打扰：手环 silent 仍显示；outbox 持久化 + `cid`；手环 interconnect `JSON.stringify`；首页戳三下；版本对齐 |
 | 0.1.1 | 手机打包可写入 `BEAT_SERVER`；自建中继部署文档 |

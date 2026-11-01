@@ -18,6 +18,7 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -439,6 +440,24 @@ public class MainActivity extends Activity implements Hub.Listener {
             c.addView(off);
         }
 
+        // Watch 3 等只能 notify：弱化 AstroBox，改成「通知镜像清单」入口（完成后不再打扰）
+        if (myNotifyOnly() && !hub.sp.getBoolean("mirror_ok", false)) {
+            LinearLayout tip = ui.tipCard();
+            ui.pad(tip, 18, 14, 18, 14);
+            tip.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
+            tip.setOnClickListener(v -> showMirrorGuide());
+            TextView tipTitle = ui.text("⌚ 让 " + hub.wear.deviceName() + " 也能收到", 15, Ui.TEXT, true);
+            TextView tipBody = ui.text("这块表不用装 App，靠小米运动健康镜像手机通知。3 步打开就好。", 13, Ui.TIP, false);
+            tipBody.setLineSpacing(0, 1.35f);
+            tipBody.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
+            TextView tipGo = ui.text("打开通知镜像清单 ›", 13, Ui.PINK_DEEP, true);
+            tipGo.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 8, 0, 0));
+            tip.addView(tipTitle);
+            tip.addView(tipBody);
+            tip.addView(tipGo);
+            c.addView(tip);
+        }
+
         // 小白引导：手环未装「心跳」时给一键入口
         if (needBandInstallGuide()) {
             LinearLayout tip = ui.tipCard();
@@ -533,7 +552,70 @@ public class MainActivity extends Activity implements Hub.Listener {
         LinearLayout items = timeline(6, false);
         items.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 10, 24, 0));
         c.addView(items);
+
+        // 今日心情小结：只读本地收发记录
+        int moodsToday = todayMoods().size();
+        TextView sum = ui.text(Logic.moodSummaryLine(moodsToday), 12, Ui.MUTED, false);
+        sum.setGravity(Gravity.CENTER);
+        ui.pad(sum, 0, 10, 0, 10);
+        sum.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 14, 24, 0));
+        sum.setOnClickListener(v -> { if (todayMoods().isEmpty()) moodDialog(); else todayMoodSheet(); });
+        c.addView(sum);
         return c;
+    }
+
+    /** Today's mood events from local history, newest first. */
+    private java.util.List<JSONObject> todayMoods() {
+        JSONArray h = hub.history();
+        long now = System.currentTimeMillis();
+        java.util.List<JSONObject> out = new java.util.ArrayList<>();
+        for (int i = h.length() - 1; i >= 0; i--) {
+            JSONObject e = h.optJSONObject(i);
+            if (e != null && "mood".equals(e.optString("kind")) && Logic.sameDay(e.optLong("ts"), now)) out.add(e);
+        }
+        return out;
+    }
+
+    private void todayMoodSheet() {
+        java.util.List<JSONObject> list = todayMoods();
+        String pName = hub.partner().optString("name", "TA");
+        LinearLayout c = ui.col();
+        ui.pad(c, 22, 22, 22, 18);
+        c.addView(ui.text("今天的心情", 20, Ui.TEXT, true));
+        TextView sub = ui.text(Logic.moodSummaryLine(list.size()).replace(" ›", ""), 13, Ui.MUTED, false);
+        sub.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 4, 0, 0));
+        c.addView(sub);
+        LinearLayout card = ui.card();
+        ui.pad(card, 18, 4, 18, 4);
+        card.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 14, 0, 0));
+        for (int i = 0; i < list.size(); i++) {
+            JSONObject e = list.get(i);
+            if (i > 0) card.addView(ui.divider());
+            boolean mine = e.optBoolean("mine");
+            LinearLayout r = ui.row();
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            ui.pad(r, 0, 12, 0, 12);
+            r.addView(ui.text(Logic.clock(e.optLong("ts")), 13, Ui.MUTED, false), ui.lp(ui.px(52), Ui.WRAP));
+            TextView em = ui.text(Logic.emoji(e.optString("mood")), 22, Ui.TEXT, false);
+            em.setGravity(Gravity.CENTER);
+            em.setBackground(ui.oval(mine ? Ui.LAV_TINT : Ui.PINK_TINT));
+            r.addView(em, ui.lp(ui.px(38), ui.px(38)));
+            TextView lbl = ui.ellipsize(ui.text(Logic.moodLabel(e.optString("mood")), 15, Ui.TEXT, false));
+            LinearLayout.LayoutParams lp = ui.weight(1);
+            lp.leftMargin = ui.px(10);
+            r.addView(lbl, lp);
+            r.addView(ui.text(Logic.moodSummaryWho(mine, pName), 13, mine ? Ui.LAV_DEEP : Ui.PINK_DEEP, true));
+            card.addView(r);
+        }
+        ScrollView sc = new ScrollView(this);
+        sc.addView(card);
+        LinearLayout.LayoutParams scp = ui.lp(Ui.MATCH, Ui.WRAP);
+        c.addView(sc, scp);
+        TextView close = ui.pill("知道了", 16, Ui.PINK_DEEP, Ui.PINK_TINT, 46);
+        close.setLayoutParams(ui.lp(Ui.MATCH, ui.px(46), 0, 16, 0, 0));
+        c.addView(close);
+        AlertDialog d = sheet(c);
+        close.setOnClickListener(v -> d.dismiss());
     }
 
     private void pulse(View v) {
@@ -662,6 +744,19 @@ public class MainActivity extends Activity implements Hub.Listener {
                 tiles[i].setScaleY(on ? 1.06f : 1f);
             }
         };
+        // local-only preview bubble (overlay so the grid does not jump while holding)
+        LinearLayout pv = ui.col();
+        pv.setGravity(Gravity.CENTER_HORIZONTAL);
+        pv.setBackground(ui.gradient(0xFFE8B4D4, 0xFFC9A0DC, 20));
+        pv.setElevation(ui.px(8));
+        ui.pad(pv, 18, 10, 18, 10);
+        TextView pvMain = ui.text("", 17, Color.WHITE, true);
+        pvMain.setGravity(Gravity.CENTER);
+        TextView pvSub = ui.text(Logic.moodPreviewHint(), 12, 0xFFFFF5FB, false);
+        pvSub.setGravity(Gravity.CENTER);
+        pv.addView(pvMain);
+        pv.addView(pvSub);
+        pv.setVisibility(View.GONE);
         int cell = (getResources().getDisplayMetrics().widthPixels - ui.px(200)) / 4;
         for (int i = 0; i < Logic.MOOD_IDS.length; i++) {
             final String id = Logic.MOOD_IDS[i];
@@ -673,12 +768,27 @@ public class MainActivity extends Activity implements Hub.Listener {
             lp.height = cell;
             lp.setMargins(ui.px(4), ui.px(4), ui.px(4), ui.px(4));
             t.setOnClickListener(v -> { chosen[0] = id; paint.run(); });
+            attachHoldPreview(t, () -> {
+                pvMain.setText(Logic.moodPreview(id));
+                pv.setAlpha(0f);
+                pv.setVisibility(View.VISIBLE);
+                pv.animate().alpha(1f).setDuration(120).start();
+            }, () -> pv.setVisibility(View.GONE));
             tiles[i] = t;
             g.addView(t, lp);
         }
         paint.run();
-        g.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 14, 0, 0));
-        c.addView(g);
+        FrameLayout gw = new FrameLayout(this);
+        gw.addView(g);
+        FrameLayout.LayoutParams pvp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+        pvp.topMargin = ui.px(6);
+        gw.addView(pv, pvp);
+        gw.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 14, 0, 0));
+        c.addView(gw);
+        TextView holdTip = ui.text("轻点选中 · 长按预览（不会发出）", 12, Ui.MUTED, false);
+        holdTip.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 4, 6, 0, 0));
+        c.addView(holdTip);
         EditText note = input("附言（可不填）", hub.myMoodText(), 20);
         note.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 14, 0, 0));
         c.addView(note);
@@ -692,6 +802,51 @@ public class MainActivity extends Activity implements Hub.Listener {
             lastSeenMyMood = chosen[0];
             d.dismiss();
             playMoodFx();
+        });
+    }
+
+    /**
+     * Hold ~400ms → show a local-only preview; releasing after a hold never clicks/sends.
+     * A quick tap still goes through performClick().
+     */
+    private void attachHoldPreview(View v, Runnable show, Runnable hide) {
+        final boolean[] held = {false};
+        final float[] down = {0, 0};
+        final Runnable fire = () -> {
+            held[0] = true;
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            show.run();
+        };
+        final int slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+        v.setOnTouchListener((view, ev) -> {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    held[0] = false;
+                    down[0] = ev.getX(); down[1] = ev.getY();
+                    view.setPressed(true);
+                    view.postDelayed(fire, Logic.PREVIEW_HOLD_MS);
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (!held[0] && (Math.abs(ev.getX() - down[0]) > slop || Math.abs(ev.getY() - down[1]) > slop)) {
+                        view.removeCallbacks(fire);
+                        view.setPressed(false);
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    view.removeCallbacks(fire);
+                    view.setPressed(false);
+                    if (held[0]) { hide.run(); held[0] = false; return true; }  // preview only, no send
+                    if (Math.abs(ev.getX() - down[0]) <= slop && Math.abs(ev.getY() - down[1]) <= slop) view.performClick();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    view.removeCallbacks(fire);
+                    view.setPressed(false);
+                    if (held[0]) hide.run();
+                    held[0] = false;
+                    return true;
+                default:
+                    return false;
+            }
         });
     }
 
@@ -922,6 +1077,15 @@ public class MainActivity extends Activity implements Hub.Listener {
         installGuide.addView(igBody);
         installGuide.addView(ui.text("引导 ›", 13, Ui.PINK_DEEP, true));
         installGuide.setOnClickListener(v -> showBandInstallGuide());
+        if (myNotifyOnly()) {
+            // Watch 3：不需要 AstroBox，换成通知镜像清单
+            igIc.setText("🔔");
+            ((TextView) igBody.getChildAt(0)).setText(Logic.mirrorGuideTitle());
+            igSubTv.setText(hub.sp.getBoolean("mirror_ok", false)
+                ? "已确认表上能收到 · 点开可再试发"
+                : hub.wear.deviceName() + " 靠通知镜像 · 3 步打开");
+            installGuide.setOnClickListener(v -> showMirrorGuide());
+        }
         w.addView(installGuide);
 
         // ---- phrases
@@ -998,8 +1162,141 @@ public class MainActivity extends Activity implements Hub.Listener {
         return !hub.wear.appInstalled();
     }
 
+    /** 我的手环已识别且不能装快应用（Watch 3 等）。 */
+    private boolean myNotifyOnly() {
+        return hub.wear.hasNode() && Logic.isNotifyOnlyDevice(hub.wear.deviceName());
+    }
+
+    /** Watch 3 / notify：一页「通知镜像清单」+ 试发（本机测试通知，不发给 TA）。 */
+    private void showMirrorGuide() {
+        LinearLayout c = ui.col();
+        ui.pad(c, 22, 18, 22, 16);
+        c.addView(ui.text(Logic.mirrorGuideTitle(), 20, Ui.TEXT, true));
+        TextView intro = ui.text(hub.wear.deviceName() + " 不能装 App，TA 的消息会以手机通知的形式出现在表上。按顺序做完 3 步：", 13, Ui.TIP, false);
+        intro.setLineSpacing(0, 1.35f);
+        intro.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
+        c.addView(intro);
+
+        String[] acts = {"打开小米运动健康 ›", notificationsOn() ? "通知已允许 ✓ · 再看看 ›" : "去允许通知 ›", null};
+        LinearLayout card = ui.card();
+        ui.pad(card, 18, 6, 18, 6);
+        card.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 14, 0, 0));
+        for (int i = 0; i < Logic.MIRROR_STEPS.length; i++) {
+            if (i > 0) card.addView(ui.divider());
+            LinearLayout r = ui.row();
+            r.setGravity(Gravity.TOP);
+            ui.pad(r, 0, 12, 0, 12);
+            TextView n = ui.text(String.valueOf(i + 1), 14, Color.WHITE, true);
+            n.setGravity(Gravity.CENTER);
+            n.setBackground(ui.oval(i == 2 ? Ui.LAV : Ui.PINK));
+            r.addView(n, ui.lp(ui.px(26), ui.px(26)));
+            LinearLayout b = ui.col();
+            TextView st = ui.text(Logic.MIRROR_STEPS[i], 14, Ui.TEXT, false);
+            st.setLineSpacing(0, 1.35f);
+            b.addView(st);
+            if (acts[i] != null) {
+                TextView a = ui.text(acts[i], 13, Ui.LAV_DEEP, true);
+                a.setLayoutParams(ui.lp(Ui.WRAP, Ui.WRAP, 0, 6, 0, 0));
+                final int step = i;
+                a.setOnClickListener(v -> { if (step == 0) openMiFitness(); else openNotificationSettings(); });
+                b.addView(a);
+            }
+            LinearLayout.LayoutParams bp = ui.weight(1);
+            bp.leftMargin = ui.px(12);
+            r.addView(b, bp);
+            card.addView(r);
+        }
+        c.addView(card);
+
+        TextView go = ui.pill("试发一条", 17, Color.WHITE, Ui.PINK, 52);
+        go.setLayoutParams(ui.lp(Ui.MATCH, ui.px(52), 0, 18, 0, 0));
+        c.addView(go);
+        TextView note = ui.text("只发到你自己的手机和表上，TA 不会收到", 12, Ui.MUTED, false);
+        note.setGravity(Gravity.CENTER);
+        note.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 6, 0, 0));
+        c.addView(note);
+
+        // result row (shown after a test)
+        LinearLayout res = ui.col();
+        res.setVisibility(View.GONE);
+        res.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 14, 0, 0));
+        res.addView(ui.text("表上亮了吗？", 15, Ui.TEXT, true));
+        LinearLayout yn = ui.row();
+        yn.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 10, 0, 0));
+        TextView yes = ui.pill("收到了 💗", 15, Color.WHITE, Ui.PINK, 44);
+        TextView no = ui.pill("没收到", 15, Ui.PINK_DEEP, Ui.PINK_TINT, 44);
+        yn.addView(yes, new LinearLayout.LayoutParams(0, ui.px(44), 1));
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, ui.px(44), 1);
+        np.leftMargin = ui.px(10);
+        yn.addView(no, np);
+        res.addView(yn);
+        StringBuilder fx = new StringBuilder("再试试这两条：");
+        for (int i = 0; i < Logic.MIRROR_FIXES.length; i++) fx.append("\n· ").append(Logic.MIRROR_FIXES[i]);
+        TextView fixes = ui.text(fx.toString(), 13, Ui.TIP, false);
+        fixes.setLineSpacing(0, 1.4f);
+        fixes.setBackground(ui.roundCss(Ui.LAV_TINT, 16));
+        ui.pad(fixes, 16, 12, 16, 12);
+        fixes.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 0, 10, 0, 0));
+        fixes.setVisibility(View.GONE);
+        res.addView(fixes);
+        c.addView(res);
+
+        TextView close = ui.pill("关闭", 15, Ui.MUTED, Ui.LAV_TINT, 44);
+        close.setLayoutParams(ui.lp(Ui.MATCH, ui.px(44), 0, 12, 0, 0));
+        c.addView(close);
+
+        ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
+        sc.addView(c);
+        AlertDialog d = sheet(sc);
+        go.setOnClickListener(v -> {
+            if (!notificationsOn()) { onToast("先允许「心跳」通知，再试发"); openNotificationSettings(); return; }
+            hub.notifier.showIncoming(Logic.mirrorTestTitle(), Logic.mirrorTestBody(), false);
+            pulse(v);
+            res.setVisibility(View.VISIBLE);
+            fixes.setVisibility(View.GONE);
+            go.setText("再试发一条");
+        });
+        yes.setOnClickListener(v -> {
+            hub.sp.edit().putBoolean("mirror_ok", true).apply();
+            d.dismiss();
+            onToast("搞定！TA 的心跳会出现在表上");
+            render();
+        });
+        no.setOnClickListener(v -> fixes.setVisibility(View.VISIBLE));
+        close.setOnClickListener(v -> d.dismiss());
+    }
+
+    private boolean notificationsOn() {
+        android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null || !nm.areNotificationsEnabled()) return false;
+        android.app.NotificationChannel ch = nm.getNotificationChannel(Notifier.CH_LOVE);
+        return ch == null || ch.getImportance() != android.app.NotificationManager.IMPORTANCE_NONE;
+    }
+
+    private void openNotificationSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
+        } catch (Exception e) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    private void openMiFitness() {
+        for (String pkg : new String[]{"com.mi.health", "com.xiaomi.wearable"}) {
+            Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (i != null) {
+                startActivity(i);
+                onToast("设备 → 通知与提醒 → 打开「心跳」");
+                return;
+            }
+        }
+        onToast("没找到小米运动健康，请先安装并连接手表");
+    }
+
     /** 小白分步引导：每页一个动作。实际装 .rpk 仍走 AstroBox → 切回小米运动健康 → 本 App 试发。 */
     private void showBandInstallGuide() {
+        if (myNotifyOnly()) { showMirrorGuide(); return; }
         guidePage = 0;
         hub.redetect();
         renderGuidePage();
@@ -1047,7 +1344,7 @@ public class MainActivity extends Activity implements Hub.Listener {
                 break;
             case 3:
                 title = "④ 用 AstroBox 装「心跳」";
-                body = "请按顺序做完再点下一步：\n1. 浏览器打开 https://abox.run 下载安装 AstroBox V2\n2. 手机设置里结束「小米运动健康」（搜不到表时必做）\n3. 表上：设置 → 系统操作 → 连接新手机 → 点蓝勾\n4. AstroBox 连上表后：队列 → ＋ → 快应用 → 选下载里的\n   com.xintiao.beat.debug.0.1.4.rpk\n5. 等到 100%，表应用列表出现粉色「心跳」\n\n若 AstroBox 仍搜不到：再结束一次运动健康，表上再点「连接新手机」。";
+                body = "请按顺序做完再点下一步：\n1. 浏览器打开 https://abox.run 下载安装 AstroBox V2\n2. 手机设置里结束「小米运动健康」（搜不到表时必做）\n3. 表上：设置 → 系统操作 → 连接新手机 → 点蓝勾\n4. AstroBox 连上表后：队列 → ＋ → 快应用 → 选下载里的\n   " + Logic.BAND_RPK + "\n5. 等到 100%，表应用列表出现粉色「心跳」\n\n若 AstroBox 仍搜不到：再结束一次运动健康，表上再点「连接新手机」。";
                 primary = "我装好了，下一步";
                 break;
             case 4:

@@ -75,6 +75,34 @@ public class LogicTest {
         eq("安装到你的表", Logic.installGuideTitle(), "guide title");
         eq(true, Logic.fullDualVibrateTip(true, false).contains("完整 App"), "dual vib tip");
 
+        // 0.1.6 preview / today summary / notify mirror guide
+        eq("预览：想你 🥰", Logic.moodPreview("miss_you"), "preview miss_you");
+        eq("预览：困困 😴", Logic.moodPreview("tired"), "preview legacy");
+        eq("", Logic.moodPreview(""), "preview empty");
+        eq(400, Logic.PREVIEW_HOLD_MS, "hold ms");
+        eq(true, Logic.sameDay(now - 60_000, now), "same day");
+        eq(false, Logic.sameDay(now - 2 * 86_400_000L, now), "not same day");
+        eq(false, Logic.sameDay(0, now), "ts 0");
+        eq(2, Logic.todayMoodCount(new String[]{"mood", "miss", "mood", "mood"},
+            new long[]{now - 1000, now - 2000, now - 3 * 86_400_000L, now - 5000}, now), "today mood count");
+        eq(0, Logic.todayMoodCount(null, null, now), "count null");
+        eq("今天你们互换了 3 次心情 ›", Logic.moodSummaryLine(3), "summary line");
+        eq(true, Logic.moodSummaryLine(0).startsWith("今天还没互换心情"), "summary zero");
+        eq("我", Logic.moodSummaryWho(true, "宝贝"), "who me");
+        eq("宝贝", Logic.moodSummaryWho(false, "宝贝"), "who partner");
+        eq("TA", Logic.moodSummaryWho(false, ""), "who TA");
+        eq(true, Logic.isNotifyOnlyDevice("Redmi Watch 3"), "watch3 notify-only");
+        eq(false, Logic.isNotifyOnlyDevice("Xiaomi Smart Band 9 Pro"), "band9pro full");
+        eq(false, Logic.isNotifyOnlyDevice("Redmi Watch 5"), "watch5 full");
+        eq(false, Logic.isNotifyOnlyDevice(""), "unknown not notify-only");
+        eq(false, Logic.isNotifyOnlyDevice(null), "null not notify-only");
+        eq(3, Logic.MIRROR_STEPS.length, "3 mirror steps");
+        eq(true, Logic.MIRROR_STEPS[0].contains("小米运动健康") && Logic.MIRROR_STEPS[0].contains("通知与提醒"), "step1");
+        eq(true, Logic.MIRROR_STEPS[1].contains("TA 的心跳"), "step2 channel");
+        eq(true, Logic.MIRROR_STEPS[2].contains("试发一条"), "step3");
+        eq(true, Logic.MIRROR_FIXES.length >= 1 && Logic.MIRROR_FIXES.length <= 2, "1-2 fixes");
+        eq("com.xintiao.beat.debug.0.1.6.rpk", Logic.BAND_RPK, "rpk name");
+
         System.out.println(passes + " passed, " + fails + " failed");
         if (fails > 0) System.exit(1);
     }

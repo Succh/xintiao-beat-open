@@ -45,3 +45,16 @@ test('silent skips vibration', () => {
   assert.deepEqual(vibrationPlan({ kind: 'ack' }), [])
   assert.equal(describeIncoming({ kind: 'ack', ts: Date.now() }, Date.now()).title, '收到啦')
 })
+
+test('band + phone versions stay in sync (0.1.6+)', async () => {
+  const { readFileSync } = await import('node:fs')
+  const url = (p) => new URL(p, import.meta.url)
+  const manifest = JSON.parse(readFileSync(url('../src/manifest.json'), 'utf8'))
+  const pkg = JSON.parse(readFileSync(url('../package.json'), 'utf8'))
+  const phone = readFileSync(url('../../phone/AndroidManifest.xml'), 'utf8')
+  const phoneVer = /android:versionName="([^"]+)"/.exec(phone)[1]
+  const logic = readFileSync(url('../../phone/src/com/xintiao/beat/Logic.java'), 'utf8')
+  assert.equal(manifest.versionName, pkg.version)
+  assert.equal(manifest.versionName, phoneVer)
+  assert.ok(logic.includes(`com.xintiao.beat.debug.${manifest.versionName}.rpk`), 'guide rpk name matches band version')
+})

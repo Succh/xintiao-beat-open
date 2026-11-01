@@ -282,4 +282,77 @@ public final class Logic {
         return "安装到你的表";
     }
 
+    // ------------------------------------------------------------------ 0.1.6
+    /** Band package file name shown in the AstroBox step (kept in sync with band/src/manifest.json). */
+    public static final String BAND_RPK = "com.xintiao.beat.debug.0.1.6.rpk";
+
+    /** Long-press threshold for the local-only mood preview (ms). */
+    public static final int PREVIEW_HOLD_MS = 400;
+
+    /** Local-only preview line shown while holding a mood tile; never sent. */
+    public static String moodPreview(String moodId) {
+        if (moodId == null || moodId.isEmpty()) return "";
+        return "预览：" + moodLabel(moodId) + " " + emoji(moodId);
+    }
+
+    /** Small line under the preview bubble. */
+    public static String moodPreviewHint() {
+        return "TA 会看到这个心情 · 松手不发送";
+    }
+
+    /** True if ts falls on the same local calendar day as now. */
+    public static boolean sameDay(long ts, long now) {
+        if (ts <= 0) return false;
+        Calendar a = Calendar.getInstance();
+        a.setTimeInMillis(ts);
+        Calendar b = Calendar.getInstance();
+        b.setTimeInMillis(now);
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR) && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
+    }
+
+    /** Counts today's mood events from parallel arrays (kind, ts) of local history. */
+    public static int todayMoodCount(String[] kinds, long[] ts, long now) {
+        if (kinds == null || ts == null) return 0;
+        int n = 0;
+        for (int i = 0; i < Math.min(kinds.length, ts.length); i++)
+            if ("mood".equals(kinds[i]) && sameDay(ts[i], now)) n++;
+        return n;
+    }
+
+    /** Grey one-liner at the bottom of home. */
+    public static String moodSummaryLine(int n) {
+        if (n <= 0) return "今天还没互换心情 · 点「😊 改心情」告诉 TA";
+        return "今天你们互换了 " + n + " 次心情 ›";
+    }
+
+    /** Who column in the today-mood list. */
+    public static String moodSummaryWho(boolean mine, String partnerName) {
+        if (mine) return "我";
+        return partnerName == null || partnerName.isEmpty() ? "TA" : partnerName;
+    }
+
+    /** Wearable is known and cannot run quick apps (e.g. Redmi Watch 3) → notification-mirror guide. */
+    public static boolean isNotifyOnlyDevice(String nodeName) {
+        return nodeName != null && !nodeName.trim().isEmpty() && !canRunQuickApp(nodeName);
+    }
+
+    /** Notification-mirror checklist for notify-only watches (3 steps). */
+    public static final String[] MIRROR_STEPS = {
+        "打开「小米运动健康」→ 设备 → 通知与提醒 → 找到「心跳」并打开开关",
+        "手机设置里允许「心跳」通知，并确认「TA 的心跳」这一类通知是打开的",
+        "点下面「试发一条」，手机会弹一条测试通知，看表上是否亮起"
+    };
+
+    /** Failure state: only 1–2 short fixes. */
+    public static final String[] MIRROR_FIXES = {
+        "表和手机要保持蓝牙连接：在小米运动健康首页看到「已连接」",
+        "关掉手机勿扰 / 专注模式后再试一次"
+    };
+
+    public static String mirrorGuideTitle() { return "通知镜像清单"; }
+
+    public static String mirrorTestTitle() { return "💗 心跳 · 测试"; }
+
+    public static String mirrorTestBody() { return "表上亮了就说明通知镜像成功啦～"; }
+
 }
