@@ -101,7 +101,7 @@ public class LogicTest {
         eq(true, Logic.MIRROR_STEPS[1].contains("TA 的心跳"), "step2 channel");
         eq(true, Logic.MIRROR_STEPS[2].contains("试发一条"), "step3");
         eq(true, Logic.MIRROR_FIXES.length >= 1 && Logic.MIRROR_FIXES.length <= 2, "1-2 fixes");
-        eq("com.xintiao.beat.debug.0.1.8.rpk", Logic.BAND_RPK, "rpk name");
+        eq("com.xintiao.beat.debug.0.1.9.rpk", Logic.BAND_RPK, "rpk name");
 
         // 0.1.7 mood-aware FX + today miss line
         eq("🥰", Logic.moodFxCenter("miss_you"), "fx center miss_you");
@@ -126,6 +126,17 @@ public class LogicTest {
         eq(true, Logic.shouldPlayInboundMissFx("miss", "poke3", false), "inbound poke");
         eq(false, Logic.shouldPlayInboundMissFx("miss", "short", true), "outbound no fx helper");
         eq(false, Logic.shouldPlayInboundMissFx("mood", null, false), "mood not miss fx");
+
+        // 0.1.9 phrase soft FX
+        eq("💬", Logic.phraseFxCenter(""), "phrase fx empty");
+        eq("💬", Logic.phraseFxCenter(null), "phrase fx null");
+        eq("💗", Logic.phraseFxCenter("heart"), "phrase fx heart");
+        eq("👀", Logic.phraseFxCenter("eyes"), "phrase fx eyes");
+        eq(8, Logic.phraseFxBits("heart").length, "phrase fx bits");
+        eq("💗", Logic.phraseFxBits("heart")[0], "phrase fx bits first");
+        eq(true, Logic.shouldPlayInboundPhraseFx("phrase", false), "inbound phrase");
+        eq(false, Logic.shouldPlayInboundPhraseFx("phrase", true), "outbound phrase no helper");
+        eq(false, Logic.shouldPlayInboundPhraseFx("miss", false), "miss not phrase fx");
 
         System.out.println(passes + " passed, " + fails + " failed");
         if (fails > 0) System.exit(1);

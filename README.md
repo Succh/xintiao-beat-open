@@ -2,9 +2,7 @@
 
 情侣之间的「想你了」——手机 App + 小米手环/手表快应用 + 中继服务器。
 
-当前版本：**0.1.8**（手机 `versionCode` 9，手环 `0.1.8` / `versionCode` 7，两端同版）。
-
-> **公开仓库说明**：本仓库是脱敏公开版，**不含**预配置安装包（`out/`）、签名密钥（`keys/`）、真实服务器地址或部署账号信息。请自行部署中继，并用 `BEAT_SERVER=…` 构建手机 App（或在 App 设置里填写 `wss://…/ws`）。
+当前版本：**0.1.9**（手机 `versionCode` 10，手环 `0.1.9` / `versionCode` 8，两端同版）。
 
 ## 这是什么
 
@@ -51,8 +49,8 @@
 
 ## 配对流程（简述）
 
-1. 两人手机都装 `beat-0.1.8.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
-2. 打开「心跳」，设昵称；在设置里填写你的 `wss://…/ws` 服务器地址（或用 `BEAT_SERVER` 构建时写入）。
+1. 两人手机都装 `beat-0.1.9.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
+2. 打开「心跳」，设昵称；服务器地址已打包进 0.1.9（见下），一般不用手填。
 3. 一方点出 6 位配对码发给对方；另一方输入后点「开始配对」。
 4. 能装快应用的手环再按 INSTALL 用 AstroBox 装 `.rpk`，装完切回小米运动健康，并在 App 里「去授权」。
 
@@ -60,8 +58,14 @@
 
 ## 服务器
 
-请自行部署中继（见 [`server/DEPLOY.md`](./server/DEPLOY.md)）。构建手机 App 时传入 `BEAT_SERVER`，或在 App 设置里填写。公开版**不附带**预置服务器地址。  
-若托管会间歇暂停，App 会自动重连；断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
+当前演示环境跑在 **instabox** 上，公开 WebSocket 地址：
+
+```text
+wss://YOUR-RELAY.example.com/ws
+```
+
+已写入 `beat-0.1.9.apk`。自建请看 [`server/DEPLOY.md`](./server/DEPLOY.md)。  
+免费版 instabox 约每 8 小时会暂停一阵，App 会自动重连；断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
 
 > 仓库**不包含**签名私钥、keystore、API key。`keys/` 仅本地构建使用，已被 `.gitignore` 排除。
 
@@ -69,13 +73,13 @@
 
 本地构建后放在 `out/`：
 
-- `out/beat-0.1.8.apk` — 手机
-- `out/com.xintiao.beat.debug.0.1.8.rpk` — 手环调试包（常用；本版手环仅同步版本号）
-- `out/com.xintiao.beat.release.0.1.8.rpk` — 手环正式签名包（备用）
+- `out/beat-0.1.9.apk` — 手机
+- `out/com.xintiao.beat.debug.0.1.9.rpk` — 手环调试包（常用；本版手环仅同步版本号）
+- `out/com.xintiao.beat.release.0.1.9.rpk` — 手环正式签名包（备用）
 
 ```bash
 # 手机（保持线上 wss）
-BEAT_SERVER='wss://beat.example.com/ws' ./phone/build.sh
+BEAT_SERVER='wss://YOUR-RELAY.example.com/ws' ./phone/build.sh
 
 # 手环
 cd band && npm i && npm run build && npm run release
@@ -104,7 +108,8 @@ band-couple-app/
 
 | 版本 | 说明 |
 |---|---|
-| **0.1.8** | 对方发来「想你了 / 戳三下」时手机端也播轻特效；首页今日统计把「想你了」和「戳」分开显示；手环同步到 0.1.8 |
+| **0.1.9** | 发短语 / 对方发来短语时手机端播轻特效（中心跟短语表情走）；手环同步到 0.1.9 |
+| 0.1.8 | 对方发来「想你了 / 戳三下」时手机端也播轻特效；首页今日统计把「想你了」和「戳」分开显示；手环同步到 0.1.8 |
 | 0.1.7 | 心情特效跟心情表情走（中心+粒子）；点「想你了 / 戳三下」有轻特效；首页底部「今天互发了 N 次想你了」；手环同步到 0.1.7 |
 | 0.1.6 | 心情长按 400ms 本机预览（松手不发）；首页底部「今天你们互换了 N 次心情」+ 今日列表（只读本地记录）；Watch 3 / notify 设备改为「通知镜像清单」3 步 + 本机试发 + 2 条排查，full 设备保持 AstroBox 引导；手环同步到 0.1.6 |
 | 0.1.5 | 小白文案：配对页不再误导「先填服务器」；设置里说明演示包已内置地址；INSTALL 同步 |

@@ -99,6 +99,8 @@ public class MainActivity extends Activity implements Hub.Listener {
         String mm = hub.myMood();
         String fxMood = null;
         boolean inboundMiss = false;
+        boolean inboundPhrase = false;
+        String inboundPhraseE = null;
         if (moodFxReady && hub.paired()) {
             if (!pm.isEmpty() && lastSeenPartnerMood != null && !pm.equals(lastSeenPartnerMood)) fxMood = pm;
             else if (!mm.isEmpty() && lastSeenMyMood != null && !mm.equals(lastSeenMyMood)) fxMood = mm;
@@ -108,9 +110,13 @@ public class MainActivity extends Activity implements Hub.Listener {
                 if (last != null) {
                     String sig = hist.length() + "|" + last.optLong("ts") + "|" + last.optString("kind")
                         + "|" + last.optString("level") + "|" + last.optBoolean("mine");
-                    if (lastHistorySig != null && !sig.equals(lastHistorySig)
-                        && Logic.shouldPlayInboundMissFx(last.optString("kind"), last.optString("level"), last.optBoolean("mine"))) {
-                        inboundMiss = true;
+                    if (lastHistorySig != null && !sig.equals(lastHistorySig)) {
+                        if (Logic.shouldPlayInboundMissFx(last.optString("kind"), last.optString("level"), last.optBoolean("mine"))) {
+                            inboundMiss = true;
+                        } else if (Logic.shouldPlayInboundPhraseFx(last.optString("kind"), last.optBoolean("mine"))) {
+                            inboundPhrase = true;
+                            inboundPhraseE = last.optString("e");
+                        }
                     }
                     lastHistorySig = sig;
                 }
@@ -136,6 +142,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         render();
         if (fxMood != null) playMoodFx(fxMood);
         else if (inboundMiss) playMissFx();
+        else if (inboundPhrase) playPhraseFx(inboundPhraseE);
     }
 
     @Override public void onToast(String m) { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
@@ -919,7 +926,12 @@ public class MainActivity extends Activity implements Hub.Listener {
             if (i > 0) list.addView(ui.divider());
             TextView t = ui.text(Logic.emoji(p.optString("e")) + "  " + p.optString("text"), 16, Ui.TEXT, false);
             ui.pad(t, 0, 14, 0, 14);
-            t.setOnClickListener(v -> { hub.sendPhrase(p.optString("e"), p.optString("text"), "phone"); dd[0].dismiss(); });
+            t.setOnClickListener(v -> {
+                String ek = p.optString("e");
+                hub.sendPhrase(ek, p.optString("text"), "phone");
+                dd[0].dismiss();
+                playPhraseFx(ek);
+            });
             list.addView(t);
         }
         c.addView(list);
@@ -965,8 +977,10 @@ public class MainActivity extends Activity implements Hub.Listener {
         ok.setOnClickListener(v -> {
             String t = Logic.cleanPhrase(tx.getText().toString());
             if (t == null) { onToast("写点什么吧"); return; }
-            if (sendNow) hub.sendPhrase(em[0], t, "phone");
-            else if (!hub.addPhrase(em[0], t)) { onToast("最多 " + Logic.MAX_PHRASES + " 条"); return; }
+            if (sendNow) {
+                hub.sendPhrase(em[0], t, "phone");
+                playPhraseFx(em[0]);
+            } else if (!hub.addPhrase(em[0], t)) { onToast("最多 " + Logic.MAX_PHRASES + " 条"); return; }
             d.dismiss();
         });
     }
@@ -1608,6 +1622,11 @@ public class MainActivity extends Activity implements Hub.Listener {
     /** Soft heart FX for 想你了 / 戳三下 (~420ms). */
     private void playMissFx() {
         playCoupleFx(Logic.missFxCenter(), Logic.missFxBits(), 420, 22);
+    }
+
+    /** Soft phrase FX: center follows phrase emoji (~420ms). */
+    private void playPhraseFx(String emojiKey) {
+        playCoupleFx(Logic.phraseFxCenter(emojiKey), Logic.phraseFxBits(emojiKey), 420, 22);
     }
 
     /** Mood FX: center + sparks follow the mood emoji (~560ms). */
