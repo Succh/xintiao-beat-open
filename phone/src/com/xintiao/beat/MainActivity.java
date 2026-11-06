@@ -52,6 +52,7 @@ public class MainActivity extends Activity implements Hub.Listener {
     private int guidePage = 0;
     private String lastSeenMyMood = null;
     private boolean moodFxReady = false;
+    private String lastHistorySig = null;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (countdownView != null) updateCountdown();
@@ -96,16 +97,45 @@ public class MainActivity extends Activity implements Hub.Listener {
     @Override public void onChange() {
         String pm = hub.partner().optString("mood", "");
         String mm = hub.myMood();
-        boolean fx = false;
+        String fxMood = null;
+        boolean inboundMiss = false;
         if (moodFxReady && hub.paired()) {
-            if (!pm.isEmpty() && lastSeenPartnerMood != null && !pm.equals(lastSeenPartnerMood)) fx = true;
-            if (!mm.isEmpty() && lastSeenMyMood != null && !mm.equals(lastSeenMyMood)) fx = true;
+            if (!pm.isEmpty() && lastSeenPartnerMood != null && !pm.equals(lastSeenPartnerMood)) fxMood = pm;
+            else if (!mm.isEmpty() && lastSeenMyMood != null && !mm.equals(lastSeenMyMood)) fxMood = mm;
+            JSONArray hist = hub.history();
+            if (hist.length() > 0) {
+                JSONObject last = hist.optJSONObject(hist.length() - 1);
+                if (last != null) {
+                    String sig = hist.length() + "|" + last.optLong("ts") + "|" + last.optString("kind")
+                        + "|" + last.optString("level") + "|" + last.optBoolean("mine");
+                    if (lastHistorySig != null && !sig.equals(lastHistorySig)
+                        && Logic.shouldPlayInboundMissFx(last.optString("kind"), last.optString("level"), last.optBoolean("mine"))) {
+                        inboundMiss = true;
+                    }
+                    lastHistorySig = sig;
+                }
+            } else {
+                lastHistorySig = "0";
+            }
+        } else {
+            // Seed signature so the first paint after resume does not replay old FX.
+            JSONArray hist = hub.history();
+            if (hist.length() > 0) {
+                JSONObject last = hist.optJSONObject(hist.length() - 1);
+                if (last != null) {
+                    lastHistorySig = hist.length() + "|" + last.optLong("ts") + "|" + last.optString("kind")
+                        + "|" + last.optString("level") + "|" + last.optBoolean("mine");
+                }
+            } else {
+                lastHistorySig = "0";
+            }
         }
         lastSeenPartnerMood = pm;
         lastSeenMyMood = mm;
         moodFxReady = true;
         render();
-        if (fx) playMoodFx();
+        if (fxMood != null) playMoodFx(fxMood);
+        else if (inboundMiss) playMissFx();
     }
 
     @Override public void onToast(String m) { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
@@ -514,8 +544,8 @@ public class MainActivity extends Activity implements Hub.Listener {
             miss.setOutlineAmbientShadowColor(0x55B79CFF);
         }
         miss.setLayoutParams(ui.lp(Ui.MATCH, ui.px(72), 24, 18, 24, 0));
-        miss.setOnClickListener(v -> { hub.sendMiss("short", "phone"); pulse(v); });
-        miss.setOnLongClickListener(v -> { hub.sendMiss("long", "phone"); pulse(v); return true; });
+        miss.setOnClickListener(v -> { hub.sendMiss("short", "phone"); pulse(v); playMissFx(); });
+        miss.setOnLongClickListener(v -> { hub.sendMiss("long", "phone"); pulse(v); playMissFx(); return true; });
         c.addView(miss);
         TextView hint = ui.text("轻点短振 · 长按更想", 12, Ui.MUTED, false);
         hint.setGravity(Gravity.CENTER);
@@ -535,7 +565,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             chip.setOnClickListener(v -> {
                 if (q == 0) moodDialog();
                 else if (q == 1) phraseDialog();
-                else { hub.sendPoke("phone"); pulse(v); }
+                else { hub.sendPoke("phone"); pulse(v); playMissFx(); }
             });
             quick.addView(chip, cp);
         }
@@ -557,10 +587,21 @@ public class MainActivity extends Activity implements Hub.Listener {
         int moodsToday = todayMoods().size();
         TextView sum = ui.text(Logic.moodSummaryLine(moodsToday), 12, Ui.MUTED, false);
         sum.setGravity(Gravity.CENTER);
-        ui.pad(sum, 0, 10, 0, 10);
+        ui.pad(sum, 0, 10, 0, 4);
         sum.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 14, 24, 0));
         sum.setOnClickListener(v -> { if (todayMoods().isEmpty()) moodDialog(); else todayMoodSheet(); });
         c.addView(sum);
+        int[] today = todayMissPokeCount();
+        String missLine = Logic.todayTogetherLine(today[0], today[1]);
+        if (!missLine.isEmpty()) {
+            TextView ml = ui.text(missLine, 12, Ui.MUTED, false);
+            ml.setGravity(Gravity.CENTER);
+            ui.pad(ml, 0, 0, 0, 10);
+            ml.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 0, 24, 0));
+            c.addView(ml);
+        } else {
+            ui.pad(sum, 0, 10, 0, 10);
+        }
         return c;
     }
 
@@ -574,6 +615,20 @@ public class MainActivity extends Activity implements Hub.Listener {
             if (e != null && "mood".equals(e.optString("kind")) && Logic.sameDay(e.optLong("ts"), now)) out.add(e);
         }
         return out;
+    }
+
+    /** Today's 想你了 / 戳三下 counts from local history: [missN, pokeN]. */
+    private int[] todayMissPokeCount() {
+        JSONArray h = hub.history();
+        long now = System.currentTimeMillis();
+        int miss = 0, poke = 0;
+        for (int i = 0; i < h.length(); i++) {
+            JSONObject e = h.optJSONObject(i);
+            if (e == null || !"miss".equals(e.optString("kind")) || !Logic.sameDay(e.optLong("ts"), now)) continue;
+            if (Logic.isPoke(e.optString("level"))) poke++;
+            else miss++;
+        }
+        return new int[]{miss, poke};
     }
 
     private void todayMoodSheet() {
@@ -801,7 +856,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             hub.sendMood(chosen[0], note.getText().toString().trim(), "phone");
             lastSeenMyMood = chosen[0];
             d.dismiss();
-            playMoodFx();
+            playMoodFx(chosen[0]);
         });
     }
 
@@ -1550,8 +1605,18 @@ public class MainActivity extends Activity implements Hub.Listener {
             }
         }
     }
-    /** Pink–purple couple FX ~480–600ms: glow, scale pulse, 6–8 hearts; haptic once; no sound. */
-    private void playMoodFx() {
+    /** Soft heart FX for 想你了 / 戳三下 (~420ms). */
+    private void playMissFx() {
+        playCoupleFx(Logic.missFxCenter(), Logic.missFxBits(), 420, 22);
+    }
+
+    /** Mood FX: center + sparks follow the mood emoji (~560ms). */
+    private void playMoodFx(String moodId) {
+        playCoupleFx(Logic.moodFxCenter(moodId), Logic.moodFxBits(moodId), 560, 28);
+    }
+
+    /** Pink–purple couple FX: glow, scale pulse, 8 sparks; haptic once; no sound. */
+    private void playCoupleFx(String centerGlyph, String[] bits, int totalMs, int vibeMs) {
         if (root == null) return;
         View old = root.findViewWithTag("moodFx");
         if (old != null) root.removeView(old);
@@ -1559,10 +1624,10 @@ public class MainActivity extends Activity implements Hub.Listener {
             if (android.os.Build.VERSION.SDK_INT >= 26) {
                 android.os.Vibrator vb = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 if (vb != null && vb.hasVibrator())
-                    vb.vibrate(android.os.VibrationEffect.createOneShot(28, 48));
+                    vb.vibrate(android.os.VibrationEffect.createOneShot(vibeMs, 48));
             } else {
                 android.os.Vibrator vb = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                if (vb != null) vb.vibrate(28);
+                if (vb != null) vb.vibrate(vibeMs);
             }
         } catch (Exception ignored) { }
 
@@ -1583,7 +1648,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             new int[]{0xE8E8B4D4, 0xCCC9A0DC, 0x00FFF5FB});
         gd.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         glow.setBackground(gd);
-        int g = ui.px(200);
+        int g = ui.px(totalMs >= 500 ? 200 : 160);
         FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(g, g);
         glp.leftMargin = cx - g / 2;
         glp.topMargin = cy - g / 2;
@@ -1592,7 +1657,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         glow.setScaleY(0.85f);
         layer.addView(glow, glp);
 
-        TextView heart = ui.text("💗", 48, Ui.TEXT, false);
+        TextView heart = ui.text(centerGlyph == null ? "💗" : centerGlyph, totalMs >= 500 ? 48 : 40, Ui.TEXT, false);
         heart.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams hlp = new FrameLayout.LayoutParams(ui.px(80), ui.px(80));
         hlp.leftMargin = cx - ui.px(40);
@@ -1602,10 +1667,10 @@ public class MainActivity extends Activity implements Hub.Listener {
         heart.setScaleY(1f);
         layer.addView(heart, hlp);
 
-        String[] bits = {"💕", "💗", "✨", "💖", "💕", "💗", "✨", "💖"};
+        if (bits == null) bits = Logic.missFxBits();
         int[][] offs = {{-90, -36}, {88, -48}, {-70, 62}, {78, 55}, {12, -88}, {-100, 20}, {105, 12}, {0, 78}};
-        TextView[] sparks = new TextView[8];
-        for (int i = 0; i < 8; i++) {
+        TextView[] sparks = new TextView[Math.min(8, bits.length)];
+        for (int i = 0; i < sparks.length; i++) {
             TextView s = ui.text(bits[i], 14 + (i % 3), Ui.TEXT, false);
             FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(ui.px(32), ui.px(32));
             sp.leftMargin = cx + ui.px(offs[i][0]);
@@ -1617,7 +1682,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             sparks[i] = s;
         }
 
-        final int total = 560;
+        final int total = totalMs;
         glow.animate().alpha(1f).scaleX(1.08f).scaleY(1.08f).setDuration(220).start();
         heart.animate().alpha(1f).scaleX(1.06f).scaleY(1.06f).setDuration(200)
             .withEndAction(() -> heart.animate().scaleX(1f).scaleY(1f).setDuration(180).start()).start();
@@ -1629,7 +1694,7 @@ public class MainActivity extends Activity implements Hub.Listener {
             glow.animate().alpha(0f).setDuration(200).start();
             heart.animate().alpha(0f).setDuration(200).start();
             for (TextView s : sparks) s.animate().alpha(0f).setDuration(180).start();
-        }, total - 200);
+        }, Math.max(80, total - 200));
         layer.postDelayed(() -> { if (root != null) root.removeView(layer); }, total + 40);
     }
 

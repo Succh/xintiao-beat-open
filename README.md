@@ -2,7 +2,7 @@
 
 情侣之间的「想你了」——手机 App + 小米手环/手表快应用 + 中继服务器。
 
-当前版本：**0.1.6**（手机 `versionCode` 7，手环 `0.1.6` / `versionCode` 5，两端同版）。
+当前版本：**0.1.8**（手机 `versionCode` 9，手环 `0.1.8` / `versionCode` 7，两端同版）。
 
 > **公开仓库说明**：本仓库是脱敏公开版，**不含**预配置安装包（`out/`）、签名密钥（`keys/`）、真实服务器地址或部署账号信息。请自行部署中继，并用 `BEAT_SERVER=…` 构建手机 App（或在 App 设置里填写 `wss://…/ws`）。
 
@@ -51,8 +51,8 @@
 
 ## 配对流程（简述）
 
-1. 两人手机都装 `beat-0.1.6.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
-2. 打开「心跳」，设昵称；请自建中继，构建时用 `BEAT_SERVER` 烘焙地址，或在 App「设置 → 服务器」填写。
+1. 两人手机都装 `beat-0.1.8.apk`，允许通知，并按 [`INSTALL.md`](./INSTALL.md) 做好后台保活。
+2. 打开「心跳」，设昵称；在设置里填写你的 `wss://…/ws` 服务器地址（或用 `BEAT_SERVER` 构建时写入）。
 3. 一方点出 6 位配对码发给对方；另一方输入后点「开始配对」。
 4. 能装快应用的手环再按 INSTALL 用 AstroBox 装 `.rpk`，装完切回小米运动健康，并在 App 里「去授权」。
 
@@ -60,13 +60,8 @@
 
 ## 服务器
 
-请自建中继（见 [`server/DEPLOY.md`](./server/DEPLOY.md)）。WebSocket 地址形如：
-
-```text
-wss://beat.example.com/ws
-```
-
-构建手机包时用环境变量烘焙，或在 App「设置 → 服务器」填写。断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
+请自行部署中继（见 [`server/DEPLOY.md`](./server/DEPLOY.md)）。构建手机 App 时传入 `BEAT_SERVER`，或在 App 设置里填写。公开版**不附带**预置服务器地址。  
+若托管会间歇暂停，App 会自动重连；断线期间发出的消息会进手机 **outbox 持久化队列**，连上后按 `cid` 补发。
 
 > 仓库**不包含**签名私钥、keystore、API key。`keys/` 仅本地构建使用，已被 `.gitignore` 排除。
 
@@ -74,17 +69,17 @@ wss://beat.example.com/ws
 
 本地构建后放在 `out/`：
 
-- `out/beat-0.1.6.apk` — 手机
-- `out/com.xintiao.beat.debug.0.1.6.rpk` — 手环调试包（常用）
-- `out/com.xintiao.beat.release.0.1.6.rpk` — 手环正式签名包（备用）
+- `out/beat-0.1.8.apk` — 手机
+- `out/com.xintiao.beat.debug.0.1.8.rpk` — 手环调试包（常用；本版手环仅同步版本号）
+- `out/com.xintiao.beat.release.0.1.8.rpk` — 手环正式签名包（备用）
 
 ```bash
-# 手机（自建 wss）
+# 手机（保持线上 wss）
 BEAT_SERVER='wss://beat.example.com/ws' ./phone/build.sh
 
 # 手环
 cd band && npm i && npm run build && npm run release
-# 再把 dist 里的 .rpk 拷到 ../out/
+# 注意 release 会清空 dist：每步之后各自把 .rpk 拷到 ../out/
 ```
 
 单测：`cd server && npm test` · `./phone/test.sh` · `cd band && npm test`。
@@ -109,12 +104,14 @@ band-couple-app/
 
 | 版本 | 说明 |
 |---|---|
-| **0.1.6** | 心情长按 400ms 本机预览（松手不发）；首页底部「今天你们互换了 N 次心情」+ 今日列表（只读本地记录）；Watch 3 / notify 设备改为「通知镜像清单」3 步 + 本机试发 + 2 条排查，full 设备保持 AstroBox 引导；手环同步到 0.1.6 |
-| 0.1.5 | 小白文案：配对页不再误导「先填服务器」；设置说明演示包可内置地址；INSTALL 同步 |
+| **0.1.8** | 对方发来「想你了 / 戳三下」时手机端也播轻特效；首页今日统计把「想你了」和「戳」分开显示；手环同步到 0.1.8 |
+| 0.1.7 | 心情特效跟心情表情走（中心+粒子）；点「想你了 / 戳三下」有轻特效；首页底部「今天互发了 N 次想你了」；手环同步到 0.1.7 |
+| 0.1.6 | 心情长按 400ms 本机预览（松手不发）；首页底部「今天你们互换了 N 次心情」+ 今日列表（只读本地记录）；Watch 3 / notify 设备改为「通知镜像清单」3 步 + 本机试发 + 2 条排查，full 设备保持 AstroBox 引导；手环同步到 0.1.6 |
+| 0.1.5 | 小白文案：配对页不再误导「先填服务器」；设置里说明演示包已内置地址；INSTALL 同步 |
 | 0.1.4 | 想你了「轻点短振 · 长按更想」；发出「已送出/已存着」；notify 常驻提示；手环重试失败文案；Watch3 强制 notify；HyperOS 保活三句；引导「安装到你的表」+ AstroBox 搜不到提示 |
-| 0.1.3 | 心情 14（miss_you/sweet/love…，旧 id 兼容）；手机粉紫特效；7 步安装引导；Watch 3 禁选 full |
+| 0.1.3 | 心情 14（miss_you/sweet/love…，旧 id 兼容）；手机粉紫特效 560ms+心形粒子；7 步小白「安装手环」引导（AstroBox→切回→试发）；UI 精致化；手环轻量短动效；Watch 3 禁选 full |
 | 0.1.2 | 免打扰：手环 silent 仍显示；outbox 持久化 + `cid`；手环 interconnect `JSON.stringify`；首页戳三下；版本对齐 |
-| 0.1.1 | 手机打包可写入 `BEAT_SERVER`；自建中继部署文档 |
+| 0.1.1 | 手机打包写入线上 wss；instabox 部署中继 |
 | 0.1.0 | MVP |
 
 ## License / 说明

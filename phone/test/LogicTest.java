@@ -101,7 +101,31 @@ public class LogicTest {
         eq(true, Logic.MIRROR_STEPS[1].contains("TA 的心跳"), "step2 channel");
         eq(true, Logic.MIRROR_STEPS[2].contains("试发一条"), "step3");
         eq(true, Logic.MIRROR_FIXES.length >= 1 && Logic.MIRROR_FIXES.length <= 2, "1-2 fixes");
-        eq("com.xintiao.beat.debug.0.1.6.rpk", Logic.BAND_RPK, "rpk name");
+        eq("com.xintiao.beat.debug.0.1.8.rpk", Logic.BAND_RPK, "rpk name");
+
+        // 0.1.7 mood-aware FX + today miss line
+        eq("🥰", Logic.moodFxCenter("miss_you"), "fx center miss_you");
+        eq("😴", Logic.moodFxCenter("tired"), "fx center legacy");
+        eq("💗", Logic.moodFxCenter(""), "fx center empty");
+        eq("💗", Logic.moodFxCenter(null), "fx center null");
+        eq(8, Logic.moodFxBits("sweet").length, "fx bits len");
+        eq("🍬", Logic.moodFxBits("sweet")[0], "fx bits first");
+        eq("💗", Logic.missFxCenter(), "miss fx center");
+        eq(8, Logic.missFxBits().length, "miss fx bits");
+        eq(2, Logic.todayKindCount(new String[]{"miss", "mood", "miss", "miss"},
+            new long[]{now - 1000, now - 2000, now - 3 * 86_400_000L, now - 5000}, now, "miss"), "today miss count");
+        eq("", Logic.todayMissLine(0), "miss line zero");
+        eq("今天互发了 4 次「想你了」", Logic.todayMissLine(4), "miss line");
+        eq(true, Logic.isPoke("poke3"), "isPoke");
+        eq(false, Logic.isPoke("short"), "not poke");
+        eq("", Logic.todayTogetherLine(0, 0), "together zero");
+        eq("今天互发了 2 次「想你了」", Logic.todayTogetherLine(2, 0), "together miss only");
+        eq("今天互戳了 3 次", Logic.todayTogetherLine(0, 3), "together poke only");
+        eq("今天 · 想你了 2 次 · 戳了 1 次", Logic.todayTogetherLine(2, 1), "together both");
+        eq(true, Logic.shouldPlayInboundMissFx("miss", "short", false), "inbound miss");
+        eq(true, Logic.shouldPlayInboundMissFx("miss", "poke3", false), "inbound poke");
+        eq(false, Logic.shouldPlayInboundMissFx("miss", "short", true), "outbound no fx helper");
+        eq(false, Logic.shouldPlayInboundMissFx("mood", null, false), "mood not miss fx");
 
         System.out.println(passes + " passed, " + fails + " failed");
         if (fails > 0) System.exit(1);

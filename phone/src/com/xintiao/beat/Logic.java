@@ -284,7 +284,7 @@ public final class Logic {
 
     // ------------------------------------------------------------------ 0.1.6
     /** Band package file name shown in the AstroBox step (kept in sync with band/src/manifest.json). */
-    public static final String BAND_RPK = "com.xintiao.beat.debug.0.1.6.rpk";
+    public static final String BAND_RPK = "com.xintiao.beat.debug.0.1.8.rpk";
 
     /** Long-press threshold for the local-only mood preview (ms). */
     public static final int PREVIEW_HOLD_MS = 400;
@@ -355,4 +355,57 @@ public final class Logic {
 
     public static String mirrorTestBody() { return "表上亮了就说明通知镜像成功啦～"; }
 
+    // ------------------------------------------------------------------ 0.1.7 / 0.1.8
+    /** Center glyph for mood FX; falls back to heart. */
+    public static String moodFxCenter(String moodId) {
+        if (moodId != null && isMood(moodId)) return emoji(moodId);
+        return "💗";
+    }
+
+    /** Eight spark glyphs around the mood FX center (mood emoji mixed with hearts). */
+    public static String[] moodFxBits(String moodId) {
+        String e = moodFxCenter(moodId);
+        return new String[]{e, "💕", "✨", e, "💖", "💗", "✨", e};
+    }
+
+    /** Soft FX when tapping 想你了 / 戳三下 (no mood id). */
+    public static String missFxCenter() { return "💗"; }
+
+    public static String[] missFxBits() {
+        return new String[]{"💕", "💗", "✨", "💖", "💕", "💗", "✨", "💖"};
+    }
+
+    /** Counts today's events of one kind from parallel arrays. */
+    public static int todayKindCount(String[] kinds, long[] ts, long now, String kind) {
+        if (kinds == null || ts == null || kind == null) return 0;
+        int n = 0;
+        for (int i = 0; i < Math.min(kinds.length, ts.length); i++)
+            if (kind.equals(kinds[i]) && sameDay(ts[i], now)) n++;
+        return n;
+    }
+
+    /** Optional home line under the mood summary; empty when zero. */
+    public static String todayMissLine(int n) {
+        return todayTogetherLine(n, 0);
+    }
+
+    /** True when a miss event is the poke-3 gesture (not short/long 想你了). */
+    public static boolean isPoke(String level) {
+        return "poke3".equals(level);
+    }
+
+    /** Home footer: miss and/or poke counts for today; empty when both zero. */
+    public static String todayTogetherLine(int missN, int pokeN) {
+        if (missN <= 0 && pokeN <= 0) return "";
+        if (missN > 0 && pokeN <= 0) return "今天互发了 " + missN + " 次「想你了」";
+        if (missN <= 0) return "今天互戳了 " + pokeN + " 次";
+        return "今天 · 想你了 " + missN + " 次 · 戳了 " + pokeN + " 次";
+    }
+
+    /** Soft FX bits for inbound partner miss/poke (same palette as outbound). */
+    public static boolean shouldPlayInboundMissFx(String kind, String level, boolean mine) {
+        return !mine && "miss".equals(kind);
+    }
+
 }
+

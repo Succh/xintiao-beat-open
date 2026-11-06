@@ -1,6 +1,6 @@
 {
   "name": "xintiao-beat-band",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "心跳 Beat - Xiaomi Band 9 Pro quick app (Vela JS)",
   "private": true,
   "scripts": {
