@@ -1,8 +1,8 @@
 {
   "package": "com.xintiao.beat",
   "name": "心跳",
-  "versionName": "0.1.9",
-  "versionCode": 8,
+  "versionName": "0.1.10",
+  "versionCode": 9,
   "minPlatformVersion": 1200,
   "icon": "/common/logo.png",
   "simulationVersion": "default",

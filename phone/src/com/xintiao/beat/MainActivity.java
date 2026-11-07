@@ -100,6 +100,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         String fxMood = null;
         boolean inboundMiss = false;
         boolean inboundPhrase = false;
+        boolean inboundAck = false;
         String inboundPhraseE = null;
         if (moodFxReady && hub.paired()) {
             if (!pm.isEmpty() && lastSeenPartnerMood != null && !pm.equals(lastSeenPartnerMood)) fxMood = pm;
@@ -116,6 +117,8 @@ public class MainActivity extends Activity implements Hub.Listener {
                         } else if (Logic.shouldPlayInboundPhraseFx(last.optString("kind"), last.optBoolean("mine"))) {
                             inboundPhrase = true;
                             inboundPhraseE = last.optString("e");
+                        } else if (Logic.shouldPlayInboundAckFx(last.optString("kind"), last.optBoolean("mine"))) {
+                            inboundAck = true;
                         }
                     }
                     lastHistorySig = sig;
@@ -143,6 +146,7 @@ public class MainActivity extends Activity implements Hub.Listener {
         if (fxMood != null) playMoodFx(fxMood);
         else if (inboundMiss) playMissFx();
         else if (inboundPhrase) playPhraseFx(inboundPhraseE);
+        else if (inboundAck) playAckFx();
     }
 
     @Override public void onToast(String m) { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
@@ -561,18 +565,19 @@ public class MainActivity extends Activity implements Hub.Listener {
 
         LinearLayout quick = ui.row();
         quick.setLayoutParams(ui.lp(Ui.MATCH, Ui.WRAP, 24, 12, 24, 0));
-        String[] qs = {"😊 改心情", "💬 发短语", "👉 戳三下"};
-        for (int i = 0; i < 3; i++) {
+        String[] qs = {"😊 心情", "💬 短语", "👉 戳三下", "👌 收到"};
+        for (int i = 0; i < 4; i++) {
             final int q = i;
-            TextView chip = ui.text(qs[i], 14, Ui.TEXT, false);
+            TextView chip = ui.text(qs[i], 13, Ui.TEXT, false);
             chip.setGravity(Gravity.CENTER);
             chip.setBackground(ui.stroke(Color.WHITE, 999, 1.5f, Ui.LINE));
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, ui.px(40), 1);
-            if (i > 0) cp.leftMargin = ui.px(8);
+            if (i > 0) cp.leftMargin = ui.px(6);
             chip.setOnClickListener(v -> {
                 if (q == 0) moodDialog();
                 else if (q == 1) phraseDialog();
-                else { hub.sendPoke("phone"); pulse(v); playMissFx(); }
+                else if (q == 2) { hub.sendPoke("phone"); pulse(v); playMissFx(); }
+                else { hub.sendAck("phone"); pulse(v); playAckFx(); }
             });
             quick.addView(chip, cp);
         }
@@ -1627,6 +1632,11 @@ public class MainActivity extends Activity implements Hub.Listener {
     /** Soft phrase FX: center follows phrase emoji (~420ms). */
     private void playPhraseFx(String emojiKey) {
         playCoupleFx(Logic.phraseFxCenter(emojiKey), Logic.phraseFxBits(emojiKey), 420, 22);
+    }
+
+    /** Soft「收到」FX (~420ms). */
+    private void playAckFx() {
+        playCoupleFx(Logic.ackFxCenter(), Logic.ackFxBits(), 420, 22);
     }
 
     /** Mood FX: center + sparks follow the mood emoji (~560ms). */

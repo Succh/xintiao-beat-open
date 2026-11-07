@@ -284,7 +284,7 @@ public final class Logic {
 
     // ------------------------------------------------------------------ 0.1.6
     /** Band package file name shown in the AstroBox step (kept in sync with band/src/manifest.json). */
-    public static final String BAND_RPK = "com.xintiao.beat.debug.0.1.9.rpk";
+    public static final String BAND_RPK = "com.xintiao.beat.debug.0.1.10.rpk";
 
     /** Long-press threshold for the local-only mood preview (ms). */
     public static final int PREVIEW_HOLD_MS = 400;
@@ -422,6 +422,19 @@ public final class Logic {
     /** Soft FX for inbound partner phrase while the phone app is open. */
     public static boolean shouldPlayInboundPhraseFx(String kind, boolean mine) {
         return !mine && "phrase".equals(kind);
+    }
+
+    // ------------------------------------------------------------------ 0.1.10
+    /** Soft FX when sending/receiving「收到」. */
+    public static String ackFxCenter() { return "👌"; }
+
+    public static String[] ackFxBits() {
+        return new String[]{"👌", "💕", "✨", "💗", "👌", "💖", "✨", "💕"};
+    }
+
+    /** Soft FX for inbound partner ack while the phone app is open. */
+    public static boolean shouldPlayInboundAckFx(String kind, boolean mine) {
+        return !mine && "ack".equals(kind);
     }
 
 }

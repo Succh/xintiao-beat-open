@@ -101,7 +101,7 @@ public class LogicTest {
         eq(true, Logic.MIRROR_STEPS[1].contains("TA 的心跳"), "step2 channel");
         eq(true, Logic.MIRROR_STEPS[2].contains("试发一条"), "step3");
         eq(true, Logic.MIRROR_FIXES.length >= 1 && Logic.MIRROR_FIXES.length <= 2, "1-2 fixes");
-        eq("com.xintiao.beat.debug.0.1.9.rpk", Logic.BAND_RPK, "rpk name");
+        eq("com.xintiao.beat.debug.0.1.10.rpk", Logic.BAND_RPK, "rpk name");
 
         // 0.1.7 mood-aware FX + today miss line
         eq("🥰", Logic.moodFxCenter("miss_you"), "fx center miss_you");
@@ -137,6 +137,14 @@ public class LogicTest {
         eq(true, Logic.shouldPlayInboundPhraseFx("phrase", false), "inbound phrase");
         eq(false, Logic.shouldPlayInboundPhraseFx("phrase", true), "outbound phrase no helper");
         eq(false, Logic.shouldPlayInboundPhraseFx("miss", false), "miss not phrase fx");
+
+        // 0.1.10 ack soft FX
+        eq("👌", Logic.ackFxCenter(), "ack fx center");
+        eq(8, Logic.ackFxBits().length, "ack fx bits");
+        eq("👌", Logic.ackFxBits()[0], "ack fx bits first");
+        eq(true, Logic.shouldPlayInboundAckFx("ack", false), "inbound ack");
+        eq(false, Logic.shouldPlayInboundAckFx("ack", true), "outbound ack no helper");
+        eq(false, Logic.shouldPlayInboundAckFx("phrase", false), "phrase not ack fx");
 
         System.out.println(passes + " passed, " + fails + " failed");
         if (fails > 0) System.exit(1);
